@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Frontend de Teste - Gestão de Instituições</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        margin: 20px;
+        background-color: #f8f9fa;
+      }
+      header {
+        border-bottom: 2px solid #007bff;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+      }
+      h1 {
+        color: #007bff;
+      }
+      .container {
+        display: flex;
+        gap: 30px;
+      }
+      #criar,
+      #listar {
+        flex: 1;
+        padding: 20px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        background-color: #fff;
+      }
+      .form-group {
+        margin-bottom: 15px;
+      }
+      label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+      }
+      input[type="text"],
+      textarea {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        box-sizing: border-box;
+      }
+      button {
+        padding: 10px 15px;
+        background-color: #28a745;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-right: 5px;
+      }
+      button:hover {
+        background-color: #218838;
+      }
+      .delete-btn {
+        background-color: #dc3545;
+      }
+      .delete-btn:hover {
+        background-color: #c82333;
+      }
+      .list-group {
+        list-style: none;
+        padding: 0;
+      }
+      .list-group-item {
+        border: 1px solid #eee;
+        padding: 10px;
+        margin-bottom: 10px;
+        border-radius: 4px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .list-group-item strong {
+        margin-right: 15px;
+      }
+      #message {
+        margin-top: 20px;
+        padding: 10px;
+        border-radius: 4px;
+        display: none;
+      }
+      .success {
+        background-color: #d4edda;
+        color: #155724;
+        border-color: #c3e6cb;
+      }
+      .error {
+        background-color: #f8d7da;
+        color: #721c24;
+        border-color: #f5c6cb;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Gestão de Instituições (Spring Boot API Teste)</h1>
+      <p>Endpoint: <strong>http://localhost:8080/api/instituicoes</strong></p>
+      <p style="color: red">
+        <strong>🔴 IMPORTANTE:</strong> Lembre-se de adicionar
+        <code>@CrossOrigin(origins = "*")</code> no seu Spring Controller para
+        evitar erros de CORS.
+      </p>
+    </header>
+
+    <div id="message" style="display: none"></div>
+
+    <div class="container">
+      <section id="criar">
+        <h2>Criar Instituição</h2>
+        <form id="form-criar">
+          <div class="form-group">
+            <label for="nome">Nome:</label>
+            <input type="text" id="nome" required />
+          </div>
+          <div class="form-group">
+            <label for="cnpj">CNPJ:</label>
+            <input type="text" id="cnpj" required />
+          </div>
+          <div class="form-group">
+            <label for="escolas-json">Escolas (JSON Array):</label>
+            <textarea
+              id="escolas-json"
+              rows="4"
+              placeholder='[{"nome": "Engenharia", "endereco": "Rua A"}, {"nome": "Medicina", "endereco": "Rua B"}]'
+            ></textarea>
+          </div>
+          <button type="submit">Criar Instituição</button>
+        </form>
+      </section>
+
+      <section id="listar">
+        <h2>Instituições Cadastradas</h2>
+        <button onclick="fetchInstitutions()">Recarregar Lista</button>
+        <ul id="lista-instituicoes" class="list-group">
+          <li>Carregando...</li>
+        </ul>
+      </section>
+    </div>
+
+    <script>
+      const API_URL = "http://localhost:8080/api/instituicoes";
+      const listaInstituicoes = document.getElementById("lista-instituicoes");
+      const formCriar = document.getElementById("form-criar");
+      const messageDiv = document.getElementById("message");
+
+      // --- FUNÇÃO DE MENSAGEM ---
+      function showMessage(text, type) {
+        messageDiv.textContent = text;
+        messageDiv.className = type === "success" ? "success" : "error";
+        messageDiv.style.display = "block";
+        setTimeout(() => {
+          messageDiv.style.display = "none";
+        }, 5000);
+      }
+
+      // --- FUNÇÃO LISTAR (GET) ---
+      async function fetchInstitutions() {
+        listaInstituicoes.innerHTML = "<li>Carregando...</li>";
+        try {
+          const response = await fetch(API_URL);
+          if (!response.ok) {
+            throw new Error(`Erro ao buscar: ${response.statusText}`);
+          }
+          const data = await response.json();
+          renderInstitutions(data);
+        } catch (error) {
+          listaInstituicoes.innerHTML = `<li class="error">Falha ao conectar: ${error.message}. Verifique o servidor e o CORS.</li>`;
+        }
+      }
+
+      // --- FUNÇÃO DE RENDERIZAÇÃO ---
+      function renderInstitutions(instituicoes) {
+        listaInstituicoes.innerHTML = "";
+        if (instituicoes.length === 0) {
+          listaInstituicoes.innerHTML =
+            "<li>Nenhuma instituição cadastrada.</li>";
+          return;
+        }
+
+        instituicoes.forEach((inst) => {
+          const li = document.createElement("li");
+          li.className = "list-group-item";
+          li.innerHTML = `
+                    <div>
+                        <strong>${inst.nome}</strong> (CNPJ: ${
+            inst.cnpj || "N/A"
+          })
+                        <small>| ID: ${inst.id}</small>
+                    </div>
+                    <div>
+                        <button onclick="viewSchools('${inst.id}', '${
+            inst.nome
+          }')">Ver Escolas (${inst.escolas ? inst.escolas.length : 0})</button>
+                        <button class="delete-btn" onclick="deleteInstitution('${
+                          inst.id
+                        }')">Deletar</button>
+                    </div>
+                `;
+          listaInstituicoes.appendChild(li);
+        });
+      }
+
+      // --- FUNÇÃO CRIAR (POST) ---
+      formCriar.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const nome = document.getElementById("nome").value;
+        const cnpj = document.getElementById("cnpj").value;
+        const escolasJson =
+          document.getElementById("escolas-json").value || "[]";
+
+        let escolasArray;
+        try {
+          escolasArray = JSON.parse(escolasJson);
+        } catch (error) {
+          showMessage("Erro no JSON de Escolas. Verifique a sintaxe!", "error");
+          return;
+        }
+
+        const novaInstituicao = {
+          nome: nome,
+          cnpj: cnpj,
+          escolas: escolasArray,
+        };
+
+        try {
+          const response = await fetch(API_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(novaInstituicao),
+          });
+
+          if (!response.ok) {
+            throw new Error(`Falha ao criar: ${response.statusText}`);
+          }
+
+          const data = await response.json();
+          showMessage(
+            `Instituição "${data.nome}" criada com sucesso!`,
+            "success"
+          );
+          formCriar.reset();
+          fetchInstitutions(); // Recarrega a lista
+        } catch (error) {
+          showMessage(`Erro ao criar instituição: ${error.message}`, "error");
+        }
+      });
+
+      // --- FUNÇÃO DELETAR (DELETE) ---
+      async function deleteInstitution(id) {
+        if (
+          !confirm(`Tem certeza que deseja deletar a instituição com ID ${id}?`)
+        )
+          return;
+
+        try {
+          const response = await fetch(`${API_URL}/${id}`, {
+            method: "DELETE",
+          });
+
+          if (response.status === 204) {
+            // 204 No Content é o esperado para DELETE
+            showMessage(`Instituição ${id} deletada com sucesso!`, "success");
+            fetchInstitutions(); // Recarrega a lista
+          } else {
+            throw new Error(`Status ${response.status} ao deletar.`);
+          }
+        } catch (error) {
+          showMessage(`Erro ao deletar: ${error.message}`, "error");
+        }
+      }
+
+      // --- FUNÇÃO VER ESCOLAS (GET Implícito) ---
+      function viewSchools(id, nomeInstituicao) {
+        // Como as escolas estão EMBEDDED, fazemos um GET no ID da Instituição
+        // e acessamos a lista de escolas no objeto retornado.
+        // Para simplificar, esta função apenas mostra o que já foi carregado.
+
+        const instituicao = Array.from(listaInstituicoes.children).find((li) =>
+          li.innerHTML.includes(id)
+        );
+        if (!instituicao) return;
+
+        // Busca a lista completa de dados (simulando a chamada GET /api/instituicoes/{id}/escolas)
+        fetch(`${API_URL}/${id}`)
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.escolas && data.escolas.length > 0) {
+              const escolasText = data.escolas
+                .map((e) => `\n- ${e.nome} (${e.endereco})`)
+                .join("");
+              alert(`Escolas de ${nomeInstituicao}:\n${escolasText}`);
+            } else {
+              alert(
+                `A instituição ${nomeInstituicao} não possui escolas cadastradas.`
+              );
+            }
+          })
+          .catch((error) => {
+            alert(`Erro ao buscar detalhes da escola: ${error.message}`);
+          });
+      }
+
+      // Inicializa a lista ao carregar a página
+      fetchInstitutions();
+    </script>
+  </body>
+</html>
