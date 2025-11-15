@@ -24,7 +24,7 @@ public class Instituicao {
     private String cep;
     private LocalDateTime dataCriacao;
     private LocalDateTime dataAtualizacao;
-    private List<Escola> escolas; 
+    private List<UnidadesEscolares> escolas; 
 
 
 }

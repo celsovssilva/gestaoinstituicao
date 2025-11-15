@@ -38,7 +38,9 @@
         font-weight: bold;
       }
       input[type="text"],
-      textarea {
+      textarea,
+      input[type="number"] {
+        /* Adicionado input[type="number"] */
         width: 100%;
         padding: 8px;
         border: 1px solid #ced4da;
@@ -62,6 +64,12 @@
       }
       .delete-btn:hover {
         background-color: #c82333;
+      }
+      .pdf-btn {
+        background-color: #007bff;
+      }
+      .pdf-btn:hover {
+        background-color: #0056b3;
       }
       .list-group {
         list-style: none;
@@ -95,6 +103,40 @@
         color: #721c24;
         border-color: #f5c6cb;
       }
+
+      /* --- Modal Styling --- */
+      .modal {
+        display: none;
+        position: fixed;
+        z-index: 1;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0, 0, 0, 0.4);
+      }
+      .modal-content {
+        background-color: #fefefe;
+        margin: 10% auto;
+        padding: 20px;
+        border: 1px solid #888;
+        width: 80%;
+        max-width: 600px;
+        border-radius: 8px;
+      }
+      .close-btn {
+        color: #aaa;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+      }
+      .close-btn:hover,
+      .close-btn:focus {
+        color: black;
+        text-decoration: none;
+        cursor: pointer;
+      }
     </style>
   </head>
   <body>
@@ -122,20 +164,15 @@
             <label for="cnpj">CNPJ:</label>
             <input type="text" id="cnpj" required />
           </div>
-          <div class="form-group">
-            <label for="escolas-json">Escolas (JSON Array):</label>
-            <textarea
-              id="escolas-json"
-              rows="4"
-              placeholder='[{"nome": "Engenharia", "endereco": "Rua A"}, {"nome": "Medicina", "endereco": "Rua B"}]'
-            ></textarea>
-          </div>
           <button type="submit">Criar Instituição</button>
         </form>
       </section>
 
       <section id="listar">
         <h2>Instituições Cadastradas</h2>
+        <button onclick="downloadReportPdf()" class="pdf-btn">
+          Baixar Relatório (PDF)
+        </button>
         <button onclick="fetchInstitutions()">Recarregar Lista</button>
         <ul id="lista-instituicoes" class="list-group">
           <li>Carregando...</li>
@@ -143,11 +180,65 @@
       </section>
     </div>
 
+    <div id="addSchoolModal" class="modal">
+      <div class="modal-content">
+        <span class="close-btn" onclick="closeAddSchoolModal()">&times;</span>
+        <h3 id="modalTitle">Adicionar Escola à Instituição: Nome</h3>
+
+        <form id="form-add-school">
+          <input type="hidden" id="instituicaoIdHidden" name="instituicaoId" />
+
+          <div class="form-group">
+            <label for="school-nome">Nome da Escola:</label>
+            <input type="text" id="school-nome" name="nome" required />
+          </div>
+          <div class="form-group">
+            <label for="school-endereco">Endereço:</label>
+            <input type="text" id="school-endereco" name="endereco" required />
+          </div>
+          <div class="form-group">
+            <label for="school-cidade">Cidade:</label>
+            <input type="text" id="school-cidade" name="cidade" required />
+          </div>
+          <div class="form-group">
+            <label for="school-estado">Estado (UF):</label>
+            <input
+              type="text"
+              id="school-estado"
+              name="estado"
+              maxlength="2"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="school-cep">CEP:</label>
+            <input type="text" id="school-cep" name="cep" />
+          </div>
+          <div class="form-group">
+            <label for="school-alunos">Número de Alunos:</label>
+            <input
+              type="number"
+              id="school-alunos"
+              name="numeroDeAlunos"
+              min="0"
+              value="0"
+              required
+            />
+          </div>
+
+          <button type="submit" style="background-color: #007bff">
+            Adicionar Escola
+          </button>
+        </form>
+      </div>
+    </div>
     <script>
       const API_URL = "http://localhost:8080/api/instituicoes";
       const listaInstituicoes = document.getElementById("lista-instituicoes");
       const formCriar = document.getElementById("form-criar");
       const messageDiv = document.getElementById("message");
+      const addSchoolModal = document.getElementById("addSchoolModal");
+      const formAddSchool = document.getElementById("form-add-school");
 
       // --- FUNÇÃO DE MENSAGEM ---
       function showMessage(text, type) {
@@ -186,46 +277,39 @@
         instituicoes.forEach((inst) => {
           const li = document.createElement("li");
           li.className = "list-group-item";
+
+          // Verifica se o campo `escolas` existe antes de tentar acessar `length`
+          const numEscolas = inst.escolas ? inst.escolas.length : 0;
+
           li.innerHTML = `
-                    <div>
-                        <strong>${inst.nome}</strong> (CNPJ: ${
-            inst.cnpj || "N/A"
-          })
-                        <small>| ID: ${inst.id}</small>
-                    </div>
-                    <div>
-                        <button onclick="viewSchools('${inst.id}', '${
-            inst.nome
-          }')">Ver Escolas (${inst.escolas ? inst.escolas.length : 0})</button>
-                        <button class="delete-btn" onclick="deleteInstitution('${
-                          inst.id
-                        }')">Deletar</button>
-                    </div>
-                `;
+            <div>
+              <strong>${inst.nome}</strong> (CNPJ: ${inst.cnpj || "N/A"})
+              <small>| ID: ${inst.id}</small>
+            </div>
+            <div>
+              <button onclick="openAddSchoolForm('${inst.id}', '${inst.nome}')">
+                Ver Escolas (${numEscolas})
+              </button>
+              <button class="delete-btn" onclick="deleteInstitution('${
+                inst.id
+              }')">Deletar</button>
+            </div>
+          `;
           listaInstituicoes.appendChild(li);
         });
       }
 
-      // --- FUNÇÃO CRIAR (POST) ---
+      // --- FUNÇÃO CRIAR INSTITUIÇÃO (POST) ---
       formCriar.addEventListener("submit", async (e) => {
         e.preventDefault();
         const nome = document.getElementById("nome").value;
         const cnpj = document.getElementById("cnpj").value;
-        const escolasJson =
-          document.getElementById("escolas-json").value || "[]";
 
-        let escolasArray;
-        try {
-          escolasArray = JSON.parse(escolasJson);
-        } catch (error) {
-          showMessage("Erro no JSON de Escolas. Verifique a sintaxe!", "error");
-          return;
-        }
-
+        // O campo escolas-json foi removido, a lista é vazia na criação.
         const novaInstituicao = {
           nome: nome,
           cnpj: cnpj,
-          escolas: escolasArray,
+          escolas: [], // Sempre inicia com lista vazia
         };
 
         try {
@@ -241,7 +325,7 @@
 
           const data = await response.json();
           showMessage(
-            `Instituição "${data.nome}" criada com sucesso!`,
+            `Instituição "${data.nome}" criada com sucesso! Adicione escolas agora.`,
             "success"
           );
           formCriar.reset();
@@ -264,7 +348,6 @@
           });
 
           if (response.status === 204) {
-            // 204 No Content é o esperado para DELETE
             showMessage(`Instituição ${id} deletada com sucesso!`, "success");
             fetchInstitutions(); // Recarrega a lista
           } else {
@@ -275,35 +358,101 @@
         }
       }
 
-      // --- FUNÇÃO VER ESCOLAS (GET Implícito) ---
-      function viewSchools(id, nomeInstituicao) {
-        // Como as escolas estão EMBEDDED, fazemos um GET no ID da Instituição
-        // e acessamos a lista de escolas no objeto retornado.
-        // Para simplificar, esta função apenas mostra o que já foi carregado.
+      // --- FUNÇÕES DO MODAL ADICIONAR ESCOLA ---
 
-        const instituicao = Array.from(listaInstituicoes.children).find((li) =>
-          li.innerHTML.includes(id)
-        );
-        if (!instituicao) return;
+      function closeAddSchoolModal() {
+        addSchoolModal.style.display = "none";
+      }
 
-        // Busca a lista completa de dados (simulando a chamada GET /api/instituicoes/{id}/escolas)
-        fetch(`${API_URL}/${id}`)
-          .then((res) => res.json())
-          .then((data) => {
-            if (data.escolas && data.escolas.length > 0) {
-              const escolasText = data.escolas
-                .map((e) => `\n- ${e.nome} (${e.endereco})`)
-                .join("");
-              alert(`Escolas de ${nomeInstituicao}:\n${escolasText}`);
-            } else {
-              alert(
-                `A instituição ${nomeInstituicao} não possui escolas cadastradas.`
-              );
-            }
-          })
-          .catch((error) => {
-            alert(`Erro ao buscar detalhes da escola: ${error.message}`);
+      function openAddSchoolForm(id, nome) {
+        // 1. Atualiza o título e o ID da instituição
+        document.getElementById(
+          "modalTitle"
+        ).textContent = `Adicionar Escola à Instituição: ${nome}`;
+        document.getElementById("instituicaoIdHidden").value = id;
+
+        // 2. Reseta o formulário e mostra o modal
+        formAddSchool.reset();
+        addSchoolModal.style.display = "block";
+      }
+
+      // SUBMISSÃO DO FORMULÁRIO DE ESCOLA
+      formAddSchool.addEventListener("submit", addSchoolToInstitution);
+
+      async function addSchoolToInstitution(e) {
+        e.preventDefault();
+        const instituicaoId = document.getElementById(
+          "instituicaoIdHidden"
+        ).value;
+
+        const novaEscola = {
+          // Os campos 'id', 'instituicaoId', 'criado_em', 'atualizado_em' serão tratados pelo backend
+          nome: document.getElementById("school-nome").value,
+          endereco: document.getElementById("school-endereco").value,
+          cidade: document.getElementById("school-cidade").value,
+          estado: document.getElementById("school-estado").value,
+          cep: document.getElementById("school-cep").value,
+          numeroDeAlunos: parseInt(
+            document.getElementById("school-alunos").value
+          ),
+        };
+
+        try {
+          const response = await fetch(`${API_URL}/${instituicaoId}/escolas`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(novaEscola),
           });
+
+          if (!response.ok) {
+            throw new Error(
+              `Falha ao adicionar escola: ${response.statusText}`
+            );
+          }
+
+          // A resposta deve ser a Instituição atualizada (ou o status 201)
+          const data = await response.json();
+
+          showMessage(
+            `Escola "${novaEscola.nome}" adicionada com sucesso!`,
+            "success"
+          );
+          closeAddSchoolModal();
+          fetchInstitutions(); // Recarrega a lista para mostrar a nova contagem de escolas
+        } catch (error) {
+          showMessage(
+            `Erro ao adicionar escola: ${error.message}. Verifique o endpoint POST /api/instituicoes/{id}/escolas.`,
+            "error"
+          );
+        }
+      }
+
+      // --- FUNÇÃO BAIXAR RELATÓRIO (GET) ---
+      async function downloadReportPdf() {
+        showMessage("Preparando download do relatório...", "success");
+        try {
+          const response = await fetch(`${API_URL}/download/pdf`);
+
+          if (!response.ok) {
+            throw new Error(`Erro ao baixar relatório: ${response.statusText}`);
+          }
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.style.display = "none";
+          a.href = url;
+          a.download = "relatorio_instituicoes.pdf";
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+
+          showMessage("Download iniciado com sucesso!", "success");
+        } catch (error) {
+          showMessage(
+            `Erro ao iniciar o download: ${error.message}. Verifique o endpoint /download/pdf.`,
+            "error"
+          );
+        }
       }
 
       // Inicializa a lista ao carregar a página
