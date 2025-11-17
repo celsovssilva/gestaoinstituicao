@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <title>Frontend de Teste - Gestão de Instituições</title>
     <style>
+      /* --- Estilos CSS --- */
       body {
         font-family: sans-serif;
         margin: 20px;
@@ -40,7 +41,6 @@
       input[type="text"],
       textarea,
       input[type="number"] {
-        /* Adicionado input[type="number"] */
         width: 100%;
         padding: 8px;
         border: 1px solid #ced4da;
@@ -71,6 +71,15 @@
       .pdf-btn:hover {
         background-color: #0056b3;
       }
+      /* Estilo para o botão de ver escolas */
+      .view-btn {
+        background-color: #ffc107; /* Amarelo */
+        color: #343a40; /* Texto escuro */
+      }
+      .view-btn:hover {
+        background-color: #e0a800;
+      }
+
       .list-group {
         list-style: none;
         padding: 0;
@@ -137,12 +146,24 @@
         text-decoration: none;
         cursor: pointer;
       }
+      /* Novo estilo para lista de escolas dentro do modal */
+      #schoolsListInModal {
+        margin-top: 15px;
+        list-style: disc;
+        padding-left: 20px;
+        max-height: 200px;
+        overflow-y: auto;
+        border-top: 1px dashed #ccc;
+        padding-top: 10px;
+      }
     </style>
   </head>
   <body>
     <header>
       <h1>Gestão de Instituições (Spring Boot API Teste)</h1>
-      <p>Endpoint: <strong>http://localhost:8080/api/instituicoes</strong></p>
+      <p>
+        Endpoint Base: <strong>http://localhost:8080/api/instituicoes</strong>
+      </p>
       <p style="color: red">
         <strong>🔴 IMPORTANTE:</strong> Lembre-se de adicionar
         <code>@CrossOrigin(origins = "*")</code> no seu Spring Controller para
@@ -183,8 +204,14 @@
     <div id="addSchoolModal" class="modal">
       <div class="modal-content">
         <span class="close-btn" onclick="closeAddSchoolModal()">&times;</span>
-        <h3 id="modalTitle">Adicionar Escola à Instituição: Nome</h3>
+        <h3 id="modalTitle"></h3>
 
+        <div id="view-schools-content">
+          <h4>Escolas Cadastradas:</h4>
+          <ul id="schoolsListInModal"></ul>
+        </div>
+
+        <h4>Adicionar Nova Escola:</h4>
         <form id="form-add-school">
           <input type="hidden" id="instituicaoIdHidden" name="instituicaoId" />
 
@@ -227,18 +254,20 @@
           </div>
 
           <button type="submit" style="background-color: #007bff">
-            Adicionar Escola
+            Cadastrar Escola
           </button>
         </form>
       </div>
     </div>
     <script>
+      // --- Variáveis Globais ---
       const API_URL = "http://localhost:8080/api/instituicoes";
       const listaInstituicoes = document.getElementById("lista-instituicoes");
       const formCriar = document.getElementById("form-criar");
       const messageDiv = document.getElementById("message");
       const addSchoolModal = document.getElementById("addSchoolModal");
       const formAddSchool = document.getElementById("form-add-school");
+      const schoolsListInModal = document.getElementById("schoolsListInModal");
 
       // --- FUNÇÃO DE MENSAGEM ---
       function showMessage(text, type) {
@@ -250,7 +279,7 @@
         }, 5000);
       }
 
-      // --- FUNÇÃO LISTAR (GET) ---
+      // --- FUNÇÃO LISTAR INSTITUIÇÕES (GET) ---
       async function fetchInstitutions() {
         listaInstituicoes.innerHTML = "<li>Carregando...</li>";
         try {
@@ -265,7 +294,7 @@
         }
       }
 
-      // --- FUNÇÃO DE RENDERIZAÇÃO ---
+      // --- FUNÇÃO DE RENDERIZAÇÃO DA LISTA ---
       function renderInstitutions(instituicoes) {
         listaInstituicoes.innerHTML = "";
         if (instituicoes.length === 0) {
@@ -278,7 +307,7 @@
           const li = document.createElement("li");
           li.className = "list-group-item";
 
-          // Verifica se o campo `escolas` existe antes de tentar acessar `length`
+          // Conta escolas: assume 0 se o campo 'escolas' não existir ou for nulo na lista
           const numEscolas = inst.escolas ? inst.escolas.length : 0;
 
           li.innerHTML = `
@@ -287,9 +316,16 @@
               <small>| ID: ${inst.id}</small>
             </div>
             <div>
-              <button onclick="openAddSchoolForm('${inst.id}', '${inst.nome}')">
+              <button class="view-btn" onclick="showSchools('${inst.id}', '${
+            inst.nome
+          }')">
                 Ver Escolas (${numEscolas})
               </button>
+              
+              <button onclick="openAddSchoolForm('${inst.id}', '${inst.nome}')">
+                + Escola
+              </button>
+
               <button class="delete-btn" onclick="deleteInstitution('${
                 inst.id
               }')">Deletar</button>
@@ -305,7 +341,6 @@
         const nome = document.getElementById("nome").value;
         const cnpj = document.getElementById("cnpj").value;
 
-        // O campo escolas-json foi removido, a lista é vazia na criação.
         const novaInstituicao = {
           nome: nome,
           cnpj: cnpj,
@@ -325,7 +360,7 @@
 
           const data = await response.json();
           showMessage(
-            `Instituição "${data.nome}" criada com sucesso! Adicione escolas agora.`,
+            `Instituição "${data.nome}" criada com sucesso!`,
             "success"
           );
           formCriar.reset();
@@ -338,7 +373,9 @@
       // --- FUNÇÃO DELETAR (DELETE) ---
       async function deleteInstitution(id) {
         if (
-          !confirm(`Tem certeza que deseja deletar a instituição com ID ${id}?`)
+          !window.confirm(
+            `Tem certeza que deseja deletar a instituição com ID ${id}?`
+          )
         )
           return;
 
@@ -350,6 +387,8 @@
           if (response.status === 204) {
             showMessage(`Instituição ${id} deletada com sucesso!`, "success");
             fetchInstitutions(); // Recarrega a lista
+          } else if (response.status === 404) {
+            showMessage(`Instituição ${id} não encontrada.`, "error");
           } else {
             throw new Error(`Status ${response.status} ao deletar.`);
           }
@@ -358,25 +397,75 @@
         }
       }
 
-      // --- FUNÇÕES DO MODAL ADICIONAR ESCOLA ---
+      // --- FUNÇÃO PARA BUSCAR E EXIBIR ESCOLAS (GET /escolas) ---
+      async function showSchools(id, nome) {
+        document.getElementById(
+          "modalTitle"
+        ).textContent = `Escolas de: ${nome}`;
+        schoolsListInModal.innerHTML = "<li>Carregando escolas...</li>";
+
+        // Configura o modal para o modo de visualização
+        document.getElementById("form-add-school").style.display = "none";
+        document.getElementById("view-schools-content").style.display = "block";
+        addSchoolModal.style.display = "block";
+
+        try {
+          // Chama o endpoint que retorna a lista de UnidadesEscolares
+          const response = await fetch(`${API_URL}/${id}/escolas`);
+          if (!response.ok) {
+            throw new Error(
+              `Erro ${response.status}: Falha ao buscar escolas. O endpoint GET /api/instituicoes/${id}/escolas pode não estar implementado.`
+            );
+          }
+          const escolas = await response.json();
+
+          schoolsListInModal.innerHTML = "";
+          if (escolas.length === 0) {
+            schoolsListInModal.innerHTML =
+              "<li>Nenhuma escola cadastrada para esta instituição.</li>";
+          } else {
+            escolas.forEach((escola) => {
+              const li = document.createElement("li");
+              li.innerHTML = `
+                      <strong>${escola.nome}</strong> | 
+                      ${escola.cidade} (${escola.estado}) | 
+                      Alunos: ${escola.numeroDeAlunos || "N/A"}
+                      <small>(ID: ${escola.id})</small>
+                    `;
+              schoolsListInModal.appendChild(li);
+            });
+          }
+        } catch (error) {
+          schoolsListInModal.innerHTML = `<li class="error">${error.message}</li>`;
+        }
+      }
+
+      // --- FUNÇÕES DE CONTROLE DO MODAL ---
 
       function closeAddSchoolModal() {
         addSchoolModal.style.display = "none";
+        // Garante que a lista de instituições seja atualizada após fechar o modal
+        fetchInstitutions();
       }
 
+      // Abre o modal no modo de Cadastro
       function openAddSchoolForm(id, nome) {
         // 1. Atualiza o título e o ID da instituição
         document.getElementById(
           "modalTitle"
-        ).textContent = `Adicionar Escola à Instituição: ${nome}`;
+        ).textContent = `Cadastrar Escola em: ${nome}`;
         document.getElementById("instituicaoIdHidden").value = id;
 
-        // 2. Reseta o formulário e mostra o modal
+        // 2. Garante que o formulário está visível e a lista de visualização está oculta
+        document.getElementById("form-add-school").style.display = "block";
+        document.getElementById("view-schools-content").style.display = "none";
+
+        // 3. Reseta o formulário e mostra o modal
         formAddSchool.reset();
         addSchoolModal.style.display = "block";
       }
 
-      // SUBMISSÃO DO FORMULÁRIO DE ESCOLA
+      // --- FUNÇÃO ADICIONAR ESCOLA (POST /escolas) ---
       formAddSchool.addEventListener("submit", addSchoolToInstitution);
 
       async function addSchoolToInstitution(e) {
@@ -385,8 +474,8 @@
           "instituicaoIdHidden"
         ).value;
 
+        // Coleta os dados do formulário
         const novaEscola = {
-          // Os campos 'id', 'instituicaoId', 'criado_em', 'atualizado_em' serão tratados pelo backend
           nome: document.getElementById("school-nome").value,
           endereco: document.getElementById("school-endereco").value,
           cidade: document.getElementById("school-cidade").value,
@@ -398,6 +487,7 @@
         };
 
         try {
+          // CHAMADA AO ENDPOINT DE CADASTRO DE ESCOLA
           const response = await fetch(`${API_URL}/${instituicaoId}/escolas`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -405,29 +495,32 @@
           });
 
           if (!response.ok) {
-            throw new Error(
-              `Falha ao adicionar escola: ${response.statusText}`
-            );
+            const errorText =
+              response.status === 404
+                ? "Instituição não encontrada (404). Verifique o ID."
+                : `Falha na API. Status: ${response.status}.`;
+            throw new Error(errorText);
           }
 
-          // A resposta deve ser a Instituição atualizada (ou o status 201)
+          // A resposta deve ser a Instituição atualizada (como definido no seu controller)
           const data = await response.json();
 
           showMessage(
-            `Escola "${novaEscola.nome}" adicionada com sucesso!`,
+            `Escola "${novaEscola.nome}" cadastrada com sucesso na instituição "${data.nome}"!`,
             "success"
           );
           closeAddSchoolModal();
-          fetchInstitutions(); // Recarrega a lista para mostrar a nova contagem de escolas
+          // Não é estritamente necessário, mas bom para garantir a contagem de escolas
+          fetchInstitutions();
         } catch (error) {
           showMessage(
-            `Erro ao adicionar escola: ${error.message}. Verifique o endpoint POST /api/instituicoes/{id}/escolas.`,
+            `Erro ao cadastrar escola: ${error.message}. Verifique a API.`,
             "error"
           );
         }
       }
 
-      // --- FUNÇÃO BAIXAR RELATÓRIO (GET) ---
+      // --- FUNÇÃO BAIXAR RELATÓRIO (GET /download/pdf) ---
       async function downloadReportPdf() {
         showMessage("Preparando download do relatório...", "success");
         try {
@@ -455,7 +548,7 @@
         }
       }
 
-      // Inicializa a lista ao carregar a página
+      // --- Inicializa a lista ao carregar a página ---
       fetchInstitutions();
     </script>
   </body>

@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import com.example.instituicao.model.Instituicao;
 import com.example.instituicao.model.UnidadesEscolares;
 import com.example.instituicao.repository.InstituicaoRepository;
+import com.example.instituicao.repository.UnidadesEscolaresRepository;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfWriter;
 import com.itextpdf.layout.Document;
@@ -23,7 +24,26 @@ public class InstituicaoService {
     @Autowired
     private InstituicaoRepository instituicaoRepository;
 
-   
+    @Autowired
+    private UnidadesEscolaresRepository unidadesEscolaresRepository;
+
+ public Instituicao adicionarEscola(String instituicaoId, UnidadesEscolares novaEscola) {
+
+    Instituicao instituicao = instituicaoRepository.findById(instituicaoId)
+        .orElseThrow(() -> new RuntimeException("Instituição com ID " + instituicaoId + " não encontrada"));
+    
+  
+    UnidadesEscolares escolaSalva = unidadesEscolaresRepository.save(novaEscola); 
+
+    
+    if (instituicao.getEscolas() == null) {
+        instituicao.setEscolas(new ArrayList<>());
+    }
+    instituicao.getEscolas().add(escolaSalva);
+
+
+    return instituicaoRepository.save(instituicao); 
+}
     public Instituicao criar(Instituicao instituicao) {
 
         return instituicaoRepository.save(instituicao);
@@ -47,11 +67,13 @@ public class InstituicaoService {
 
     
     
+    
     public List<UnidadesEscolares> listarEscolas(String idInstituicao) {
         Instituicao instituicao = buscarPorId(idInstituicao);
         return instituicao.getEscolas();
     }
     
+
 
     public byte[] criarPdfDasInstituicoes(List<Instituicao> instituicoes) {
 
@@ -111,19 +133,5 @@ public class InstituicaoService {
         }
 
         return baos.toByteArray();
-    }
-public Instituicao adicionarEscola(String instituicaoId, UnidadesEscolares novaEscola) {
-        Instituicao instituicao = buscarPorId(instituicaoId);
-        
-      
-        if (instituicao.getEscolas() == null) {
-            instituicao.setEscolas(new ArrayList<>());
-        }
-        
-     
-        instituicao.getEscolas().add(novaEscola);
-        
-       
-        return instituicaoRepository.save(instituicao);
     }
 }
