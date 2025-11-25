@@ -31,6 +31,7 @@ public class UnidadesEscolares {
     private String estado;
     private String cep;
     private int numeroDeAlunos;
+    private String gestorId;
     
  
     @CreatedDate

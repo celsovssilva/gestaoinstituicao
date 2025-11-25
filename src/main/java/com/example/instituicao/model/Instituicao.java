@@ -19,6 +19,7 @@ public class Instituicao {
     @Id
     private String id; 
     private String nome;
+    private String senha;
     private String cidade;
     private String Estado;
     private String cep;

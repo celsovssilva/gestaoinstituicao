@@ -7,10 +7,13 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.example.instituicao.dto.EscolaRequest;
 import com.example.instituicao.model.Instituicao;
 import com.example.instituicao.model.UnidadesEscolares;
+import com.example.instituicao.model.Usuarios;
 import com.example.instituicao.repository.InstituicaoRepository;
 import com.example.instituicao.repository.UnidadesEscolaresRepository;
+import com.example.instituicao.repository.UsuariosRepository;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfWriter;
 import com.itextpdf.layout.Document;
@@ -27,23 +30,55 @@ public class InstituicaoService {
     @Autowired
     private UnidadesEscolaresRepository unidadesEscolaresRepository;
 
- public Instituicao adicionarEscola(String instituicaoId, UnidadesEscolares novaEscola) {
-
-    Instituicao instituicao = instituicaoRepository.findById(instituicaoId)
-        .orElseThrow(() -> new RuntimeException("Instituição com ID " + instituicaoId + " não encontrada"));
-    
-  
-    UnidadesEscolares escolaSalva = unidadesEscolaresRepository.save(novaEscola); 
-
-    
-    if (instituicao.getEscolas() == null) {
-        instituicao.setEscolas(new ArrayList<>());
+    @Autowired
+    private UsuariosRepository usuariosRepository;
+public Instituicao autenticarInstituicao(String nome, String senha) {
+        
+        Instituicao instituicao = instituicaoRepository.findByNome(nome) 
+            .orElseThrow(() -> new RuntimeException("Nome ou senha da Instituição inválidos."));
+        
+      
+        if (!instituicao.getSenha().equals(senha)) { 
+            throw new RuntimeException("Nome ou senha da Instituição inválidos.");
+        }
+        
+        return instituicao;
     }
-    instituicao.getEscolas().add(escolaSalva);
+    public Instituicao adicionarEscola(String instituicaoId, EscolaRequest request) {
+
+        Instituicao instituicao = instituicaoRepository.findById(instituicaoId)
+            .orElseThrow(() -> new RuntimeException("Instituição com ID " + instituicaoId + " não encontrada"));
+        
+        UnidadesEscolares novaEscola = request.getEscola();
+        String gestorId = request.getGestorId();
+
+        
+        if (gestorId != null && !gestorId.isEmpty()) {
+            Usuarios gestor = usuariosRepository.findById(gestorId)
+                .orElseThrow(() -> new RuntimeException("Gestor com ID " + gestorId + " não encontrado."));
+            
+                    if (!"GESTOR".equals(gestor.getPapel())) {
+                 throw new RuntimeException("Usuário selecionado não tem o papel de GESTOR.");
+            }
+            
+            
+            novaEscola.setGestorId(gestorId);
+        }
+
+        novaEscola.setInstituicaoId(instituicaoId); 
+        
+        UnidadesEscolares escolaSalva = unidadesEscolaresRepository.save(novaEscola); 
+
+        
+        if (instituicao.getEscolas() == null) {
+            instituicao.setEscolas(new ArrayList<>());
+        }
+        instituicao.getEscolas().add(escolaSalva);
 
 
-    return instituicaoRepository.save(instituicao); 
-}
+        return instituicaoRepository.save(instituicao); 
+    }
+    
     public Instituicao criar(Instituicao instituicao) {
 
         return instituicaoRepository.save(instituicao);

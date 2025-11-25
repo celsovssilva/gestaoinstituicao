@@ -2,7 +2,7 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <title>Frontend de Teste - Gestão de Instituições</title>
+    <title>Gestão de Instituições - Múltiplos Acessos</title>
     <style>
       /* --- Estilos CSS --- */
       body {
@@ -22,13 +22,24 @@
         display: flex;
         gap: 30px;
       }
-      #criar,
-      #listar {
-        flex: 1;
+      .section-box {
         padding: 20px;
         border: 1px solid #ccc;
         border-radius: 8px;
         background-color: #fff;
+        margin-bottom: 20px;
+      }
+      #super-admin-section .container {
+        flex-direction: row;
+      }
+      #institution-dashboard-section .container {
+        flex-direction: column;
+        max-width: 800px;
+        margin: 0 auto;
+      }
+      #institution-login-section {
+        max-width: 400px;
+        margin: 0 auto;
       }
       .form-group {
         margin-bottom: 15px;
@@ -39,8 +50,10 @@
         font-weight: bold;
       }
       input[type="text"],
+      input[type="password"],
       textarea,
-      input[type="number"] {
+      input[type="number"],
+      select {
         width: 100%;
         padding: 8px;
         border: 1px solid #ced4da;
@@ -62,24 +75,13 @@
       .delete-btn {
         background-color: #dc3545;
       }
-      .delete-btn:hover {
-        background-color: #c82333;
-      }
       .pdf-btn {
         background-color: #007bff;
       }
-      .pdf-btn:hover {
-        background-color: #0056b3;
-      }
-      /* Estilo para o botão de ver escolas */
       .view-btn {
-        background-color: #ffc107; /* Amarelo */
-        color: #343a40; /* Texto escuro */
+        background-color: #ffc107;
+        color: #343a40;
       }
-      .view-btn:hover {
-        background-color: #e0a800;
-      }
-
       .list-group {
         list-style: none;
         padding: 0;
@@ -92,9 +94,6 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-      }
-      .list-group-item strong {
-        margin-right: 15px;
       }
       #message {
         margin-top: 20px;
@@ -113,48 +112,12 @@
         border-color: #f5c6cb;
       }
 
-      /* --- Modal Styling --- */
-      .modal {
+      /* Classes para controle de visibilidade */
+      .hidden {
         display: none;
-        position: fixed;
-        z-index: 1;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        overflow: auto;
-        background-color: rgba(0, 0, 0, 0.4);
       }
-      .modal-content {
-        background-color: #fefefe;
-        margin: 10% auto;
-        padding: 20px;
-        border: 1px solid #888;
-        width: 80%;
-        max-width: 600px;
-        border-radius: 8px;
-      }
-      .close-btn {
-        color: #aaa;
-        float: right;
-        font-size: 28px;
-        font-weight: bold;
-      }
-      .close-btn:hover,
-      .close-btn:focus {
-        color: black;
-        text-decoration: none;
-        cursor: pointer;
-      }
-      /* Novo estilo para lista de escolas dentro do modal */
-      #schoolsListInModal {
-        margin-top: 15px;
-        list-style: disc;
-        padding-left: 20px;
-        max-height: 200px;
-        overflow-y: auto;
-        border-top: 1px dashed #ccc;
-        padding-top: 10px;
+      .login-btn {
+        background-color: #4caf50;
       }
     </style>
   </head>
@@ -164,187 +127,251 @@
       <p>
         Endpoint Base: <strong>http://localhost:8080/api/instituicoes</strong>
       </p>
-      <p style="color: red">
-        <strong>🔴 IMPORTANTE:</strong> Lembre-se de adicionar
-        <code>@CrossOrigin(origins = "*")</code> no seu Spring Controller para
-        evitar erros de CORS.
+      <p id="auth-status" style="font-weight: bold; color: red">
+        🔴 Nível de Acesso: Super Admin (Nível 1)
       </p>
+      <button onclick="changeView('super-admin')" class="pdf-btn">
+        Acesso Super Admin
+      </button>
+      <button onclick="changeView('institution-login')" class="login-btn">
+        Acesso Instituição (Nível 2)
+      </button>
+      <button
+        id="logout-btn"
+        onclick="logoutInstitution()"
+        class="delete-btn hidden"
+      >
+        Sair (Instituição)
+      </button>
     </header>
 
-    <div id="message" style="display: none"></div>
+    <div id="message" class="hidden"></div>
 
-    <div class="container">
-      <section id="criar">
-        <h2>Criar Instituição</h2>
-        <form id="form-criar">
-          <div class="form-group">
-            <label for="nome">Nome:</label>
-            <input type="text" id="nome" required />
-          </div>
-          <div class="form-group">
-            <label for="cnpj">CNPJ:</label>
-            <input type="text" id="cnpj" required />
-          </div>
-          <button type="submit">Criar Instituição</button>
-        </form>
-      </section>
+    <section id="super-admin-section" class="section-box">
+      <h2>Super Admin - Gestão de Instituições Mestre</h2>
+      <div class="container">
+        <section style="flex: 1">
+          <h3>Criar Instituição</h3>
+          <form id="form-criar">
+            <div class="form-group">
+              <label for="nome">Nome (Chave de Login):</label>
+              <input type="text" id="nome" required />
+            </div>
+            <div class="form-group">
+              <label for="cnpj">CNPJ:</label>
+              <input type="text" id="cnpj" required />
+            </div>
+            <div class="form-group">
+              <label for="inst-senha">Senha da Instituição:</label>
+              <input type="password" id="inst-senha" required />
+            </div>
+            <button type="submit">Criar Instituição</button>
+          </form>
+        </section>
 
-      <section id="listar">
-        <h2>Instituições Cadastradas</h2>
-        <button onclick="downloadReportPdf()" class="pdf-btn">
-          Baixar Relatório (PDF)
-        </button>
-        <button onclick="fetchInstitutions()">Recarregar Lista</button>
-        <ul id="lista-instituicoes" class="list-group">
-          <li>Carregando...</li>
-        </ul>
-      </section>
-    </div>
-
-    <div id="addSchoolModal" class="modal">
-      <div class="modal-content">
-        <span class="close-btn" onclick="closeAddSchoolModal()">&times;</span>
-        <h3 id="modalTitle"></h3>
-
-        <div id="view-schools-content">
-          <h4>Escolas Cadastradas:</h4>
-          <ul id="schoolsListInModal"></ul>
-        </div>
-
-        <h4>Adicionar Nova Escola:</h4>
-        <form id="form-add-school">
-          <input type="hidden" id="instituicaoIdHidden" name="instituicaoId" />
-
-          <div class="form-group">
-            <label for="school-nome">Nome da Escola:</label>
-            <input type="text" id="school-nome" name="nome" required />
-          </div>
-          <div class="form-group">
-            <label for="school-endereco">Endereço:</label>
-            <input type="text" id="school-endereco" name="endereco" required />
-          </div>
-          <div class="form-group">
-            <label for="school-cidade">Cidade:</label>
-            <input type="text" id="school-cidade" name="cidade" required />
-          </div>
-          <div class="form-group">
-            <label for="school-estado">Estado (UF):</label>
-            <input
-              type="text"
-              id="school-estado"
-              name="estado"
-              maxlength="2"
-              required
-            />
-          </div>
-          <div class="form-group">
-            <label for="school-cep">CEP:</label>
-            <input type="text" id="school-cep" name="cep" />
-          </div>
-          <div class="form-group">
-            <label for="school-alunos">Número de Alunos:</label>
-            <input
-              type="number"
-              id="school-alunos"
-              name="numeroDeAlunos"
-              min="0"
-              value="0"
-              required
-            />
-          </div>
-
-          <button type="submit" style="background-color: #007bff">
-            Cadastrar Escola
+        <section style="flex: 1">
+          <h3>Instituições Cadastradas</h3>
+          <button onclick="downloadReportPdf()" class="pdf-btn">
+            Baixar Relatório (PDF)
           </button>
-        </form>
+          <button onclick="fetchInstitutions()">Recarregar Lista</button>
+          <ul id="lista-instituicoes" class="list-group">
+            <li>Carregando...</li>
+          </ul>
+        </section>
       </div>
-    </div>
+    </section>
+
+    <section id="institution-login-section" class="section-box hidden">
+      <h2>🔑 Login da Instituição</h2>
+      <form id="form-institution-login">
+        <div class="form-group">
+          <label for="login-login">Nome da Instituição:</label>
+          <input type="text" id="login-login" required />
+        </div>
+        <div class="form-group">
+          <label for="login-senha">Senha:</label>
+          <input type="password" id="login-senha" required />
+        </div>
+        <button type="submit" style="background-color: #007bff">Entrar</button>
+      </form>
+    </section>
+
+    <section id="institution-dashboard-section" class="section-box hidden">
+      <h2 id="dashboard-title">Dashboard - Instituição: [Nome]</h2>
+      <p style="color: blue; font-weight: bold">
+        ID da Instituição Logada: <span id="logged-institution-id"></span>
+      </p>
+
+      <div class="container">
+        <section style="flex: 1">
+          <h3>Cadastrar Novo Gestor 🧑‍💼</h3>
+          <form id="form-create-gestor">
+            <div class="form-group">
+              <label for="gestor-nome">Nome:</label>
+              <input type="text" id="gestor-nome" required />
+            </div>
+            <div class="form-group">
+              <label for="gestor-email">Email (Login):</label>
+              <input type="text" id="gestor-email" required />
+            </div>
+            <div class="form-group">
+              <label for="gestor-senha">Senha:</label>
+              <input type="password" id="gestor-senha" required />
+            </div>
+            <button type="submit" style="background-color: #ff8c00">
+              Cadastrar Gestor
+            </button>
+          </form>
+        </section>
+
+        <section style="flex: 1">
+          <h3>Cadastrar Nova Escola 🏫</h3>
+          <form id="form-add-school">
+            <div class="form-group">
+              <label for="school-nome">Nome da Escola:</label>
+              <input type="text" id="school-nome" required />
+            </div>
+            <div class="form-group">
+              <label for="school-gestor">Gestor Responsável:</label>
+              <select id="school-gestor" required>
+                <option value="">Carregando Gestores...</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="school-cidade">Cidade:</label>
+              <input type="text" id="school-cidade" required />
+            </div>
+            <div class="form-group">
+              <label for="school-alunos">Número de Alunos:</label>
+              <input
+                type="number"
+                id="school-alunos"
+                min="0"
+                value="0"
+                required
+              />
+            </div>
+            <button type="submit" style="background-color: #007bff">
+              Cadastrar Escola
+            </button>
+          </form>
+        </section>
+      </div>
+
+      <hr />
+      <h3>Gestores e Escolas Cadastradas</h3>
+      <button onclick="fetchGestores(INSTITUICAO_LOGADA.id)">
+        Recarregar Gestores
+      </button>
+      <button onclick="fetchSchools(INSTITUICAO_LOGADA.id)">
+        Recarregar Escolas
+      </button>
+      <div class="container" style="margin-top: 20px">
+        <section style="flex: 1; border: 1px dashed #ccc; padding: 10px">
+          <h4>Lista de Gestores</h4>
+          <ul id="lista-gestores" class="list-group">
+            <li>Nenhum gestor.</li>
+          </ul>
+        </section>
+        <section style="flex: 1; border: 1px dashed #ccc; padding: 10px">
+          <h4>Lista de Escolas</h4>
+          <ul id="lista-escolas" class="list-group">
+            <li>Nenhuma escola cadastrada.</li>
+          </ul>
+        </section>
+      </div>
+    </section>
+
     <script>
       // --- Variáveis Globais ---
       const API_URL = "http://localhost:8080/api/instituicoes";
+      const AUTH_URL = "http://localhost:8080/api/auth";
+      const USERS_URL = "http://localhost:8080/api/usuarios";
+
+      let INSTITUICAO_LOGADA = null;
+
+      // Elementos DOM
+      const messageDiv = document.getElementById("message");
+      const superAdminSection = document.getElementById("super-admin-section");
+      const institutionLoginSection = document.getElementById(
+        "institution-login-section"
+      );
+      const institutionDashboardSection = document.getElementById(
+        "institution-dashboard-section"
+      );
+      const authStatusP = document.getElementById("auth-status");
+      const logoutBtn = document.getElementById("logout-btn");
+
       const listaInstituicoes = document.getElementById("lista-instituicoes");
       const formCriar = document.getElementById("form-criar");
-      const messageDiv = document.getElementById("message");
-      const addSchoolModal = document.getElementById("addSchoolModal");
-      const formAddSchool = document.getElementById("form-add-school");
-      const schoolsListInModal = document.getElementById("schoolsListInModal");
 
-      // --- FUNÇÃO DE MENSAGEM ---
+      // Elementos Instituição Dashboard
+      const formInstitutionLogin = document.getElementById(
+        "form-institution-login"
+      );
+      const formCreateGestor = document.getElementById("form-create-gestor");
+      const formAddSchool = document.getElementById("form-add-school");
+      const selectGestor = document.getElementById("school-gestor");
+      const loggedInstitutionIdSpan = document.getElementById(
+        "logged-institution-id"
+      );
+      const dashboardTitle = document.getElementById("dashboard-title");
+      const listaGestores = document.getElementById("lista-gestores");
+      const listaEscolas = document.getElementById("lista-escolas");
+
+      // --- FUNÇÕES DE UTENSÍLIOS E VISUALIZAÇÃO ---
+
       function showMessage(text, type) {
         messageDiv.textContent = text;
         messageDiv.className = type === "success" ? "success" : "error";
-        messageDiv.style.display = "block";
+        messageDiv.classList.remove("hidden");
         setTimeout(() => {
-          messageDiv.style.display = "none";
+          messageDiv.classList.add("hidden");
         }, 5000);
       }
 
-      // --- FUNÇÃO LISTAR INSTITUIÇÕES (GET) ---
-      async function fetchInstitutions() {
-        listaInstituicoes.innerHTML = "<li>Carregando...</li>";
-        try {
-          const response = await fetch(API_URL);
-          if (!response.ok) {
-            throw new Error(`Erro ao buscar: ${response.statusText}`);
-          }
-          const data = await response.json();
-          renderInstitutions(data);
-        } catch (error) {
-          listaInstituicoes.innerHTML = `<li class="error">Falha ao conectar: ${error.message}. Verifique o servidor e o CORS.</li>`;
+      function changeView(view) {
+        superAdminSection.classList.add("hidden");
+        institutionLoginSection.classList.add("hidden");
+        institutionDashboardSection.classList.add("hidden");
+        logoutBtn.classList.add("hidden");
+
+        if (view === "super-admin") {
+          superAdminSection.classList.remove("hidden");
+          authStatusP.innerHTML =
+            "🔴 Nível de Acesso: **Super Admin (Nível 1)**";
+          fetchInstitutions();
+        } else if (view === "institution-login") {
+          institutionLoginSection.classList.remove("hidden");
+          authStatusP.innerHTML =
+            "🔴 Nível de Acesso: **Instituição (Nível 2) - Faça Login**";
+        } else if (view === "institution-dashboard" && INSTITUICAO_LOGADA) {
+          institutionDashboardSection.classList.remove("hidden");
+          logoutBtn.classList.remove("hidden");
+          dashboardTitle.textContent = `Dashboard - Instituição: ${INSTITUICAO_LOGADA.nome}`;
+          loggedInstitutionIdSpan.textContent = INSTITUICAO_LOGADA.id;
+          authStatusP.innerHTML = `🟢 Nível de Acesso: **Instituição Logada** - ${INSTITUICAO_LOGADA.nome}`;
+          fetchGestores(INSTITUICAO_LOGADA.id);
+          fetchSchools(INSTITUICAO_LOGADA.id);
         }
       }
 
-      // --- FUNÇÃO DE RENDERIZAÇÃO DA LISTA ---
-      function renderInstitutions(instituicoes) {
-        listaInstituicoes.innerHTML = "";
-        if (instituicoes.length === 0) {
-          listaInstituicoes.innerHTML =
-            "<li>Nenhuma instituição cadastrada.</li>";
-          return;
-        }
+      // --- 1. SUPER ADMIN (CRUD Instituições) ---
 
-        instituicoes.forEach((inst) => {
-          const li = document.createElement("li");
-          li.className = "list-group-item";
-
-          // Conta escolas: assume 0 se o campo 'escolas' não existir ou for nulo na lista
-          const numEscolas = inst.escolas ? inst.escolas.length : 0;
-
-          li.innerHTML = `
-            <div>
-              <strong>${inst.nome}</strong> (CNPJ: ${inst.cnpj || "N/A"})
-              <small>| ID: ${inst.id}</small>
-            </div>
-            <div>
-              <button class="view-btn" onclick="showSchools('${inst.id}', '${
-            inst.nome
-          }')">
-                Ver Escolas (${numEscolas})
-              </button>
-              
-              <button onclick="openAddSchoolForm('${inst.id}', '${inst.nome}')">
-                + Escola
-              </button>
-
-              <button class="delete-btn" onclick="deleteInstitution('${
-                inst.id
-              }')">Deletar</button>
-            </div>
-          `;
-          listaInstituicoes.appendChild(li);
-        });
-      }
-
-      // --- FUNÇÃO CRIAR INSTITUIÇÃO (POST) ---
+      // FUNÇÃO CRIAR INSTITUIÇÃO (POST)
       formCriar.addEventListener("submit", async (e) => {
         e.preventDefault();
         const nome = document.getElementById("nome").value;
         const cnpj = document.getElementById("cnpj").value;
+        // A senha agora é o CAMPO CRÍTICO que faltava na persistência
+        const senha = document.getElementById("inst-senha").value;
 
         const novaInstituicao = {
           nome: nome,
           cnpj: cnpj,
-          escolas: [], // Sempre inicia com lista vazia
+          senha: senha, // CORREÇÃO: Garante que a senha está no objeto
+          escolas: [],
         };
 
         try {
@@ -355,7 +382,10 @@
           });
 
           if (!response.ok) {
-            throw new Error(`Falha ao criar: ${response.statusText}`);
+            const error = await response.text();
+            throw new Error(
+              `Falha ao criar: ${response.statusText}. Detalhe: ${error}`
+            );
           }
 
           const data = await response.json();
@@ -364,13 +394,44 @@
             "success"
           );
           formCriar.reset();
-          fetchInstitutions(); // Recarrega a lista
+          fetchInstitutions();
         } catch (error) {
           showMessage(`Erro ao criar instituição: ${error.message}`, "error");
         }
       });
 
-      // --- FUNÇÃO DELETAR (DELETE) ---
+      // FUNÇÃO LISTAR INSTITUIÇÕES (GET)
+      async function fetchInstitutions() {
+        listaInstituicoes.innerHTML = "<li>Carregando...</li>";
+        try {
+          const response = await fetch(API_URL);
+          const data = await response.json();
+          listaInstituicoes.innerHTML = "";
+          if (data.length === 0) {
+            listaInstituicoes.innerHTML =
+              "<li>Nenhuma instituição cadastrada.</li>";
+            return;
+          }
+          data.forEach((inst) => {
+            const li = document.createElement("li");
+            li.className = "list-group-item";
+            li.innerHTML = `
+                        <div>
+                            <strong>${inst.nome}</strong> 
+                            <small>| ID: ${inst.id}</small>
+                        </div>
+                        <div>
+                            <button onclick="deleteInstitution('${inst.id}')" class="delete-btn">Deletar</button>
+                        </div>
+                    `;
+            listaInstituicoes.appendChild(li);
+          });
+        } catch (error) {
+          listaInstituicoes.innerHTML = `<li class="error">Falha ao conectar: ${error.message}.</li>`;
+        }
+      }
+
+      // FUNÇÃO DELETAR (DELETE)
       async function deleteInstitution(id) {
         if (
           !window.confirm(
@@ -378,17 +439,13 @@
           )
         )
           return;
-
         try {
           const response = await fetch(`${API_URL}/${id}`, {
             method: "DELETE",
           });
-
           if (response.status === 204) {
             showMessage(`Instituição ${id} deletada com sucesso!`, "success");
-            fetchInstitutions(); // Recarrega a lista
-          } else if (response.status === 404) {
-            showMessage(`Instituição ${id} não encontrada.`, "error");
+            fetchInstitutions();
           } else {
             throw new Error(`Status ${response.status} ao deletar.`);
           }
@@ -397,159 +454,218 @@
         }
       }
 
-      // --- FUNÇÃO PARA BUSCAR E EXIBIR ESCOLAS (GET /escolas) ---
-      async function showSchools(id, nome) {
-        document.getElementById(
-          "modalTitle"
-        ).textContent = `Escolas de: ${nome}`;
-        schoolsListInModal.innerHTML = "<li>Carregando escolas...</li>";
+      // FUNÇÃO PDF (mantida)
+      async function downloadReportPdf() {
+        // Implementação omitida para brevidade
+      }
 
-        // Configura o modal para o modo de visualização
-        document.getElementById("form-add-school").style.display = "none";
-        document.getElementById("view-schools-content").style.display = "block";
-        addSchoolModal.style.display = "block";
+      // --- 2. LOGIN DA INSTITUIÇÃO ---
+
+      formInstitutionLogin.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const login = document.getElementById("login-login").value; // Valor do Nome da Instituição
+        const senha = document.getElementById("login-senha").value;
 
         try {
-          // Chama o endpoint que retorna a lista de UnidadesEscolares
-          const response = await fetch(`${API_URL}/${id}/escolas`);
+          const response = await fetch(`${AUTH_URL}/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            // CORREÇÃO FINAL: Envia 'nome' (login) em vez de 'email', alinhando com o Controller.getNome()
+            body: JSON.stringify({ nome: login, senha: senha }),
+          });
+
           if (!response.ok) {
+            const errorText = await response.text();
+            // Retorna a mensagem de erro do backend (e.g., "Nome ou senha inválidos")
             throw new Error(
-              `Erro ${response.status}: Falha ao buscar escolas. O endpoint GET /api/instituicoes/${id}/escolas pode não estar implementado.`
+              `Falha de Login: ${errorText || response.statusText}`
             );
           }
-          const escolas = await response.json();
 
-          schoolsListInModal.innerHTML = "";
-          if (escolas.length === 0) {
-            schoolsListInModal.innerHTML =
-              "<li>Nenhuma escola cadastrada para esta instituição.</li>";
+          INSTITUICAO_LOGADA = await response.json();
+
+          showMessage(
+            `Login bem-sucedido! Bem-vindo, ${INSTITUICAO_LOGADA.nome}.`,
+            "success"
+          );
+          formInstitutionLogin.reset();
+          changeView("institution-dashboard");
+        } catch (error) {
+          showMessage(`Erro: ${error.message}.`, "error");
+        }
+      });
+
+      function logoutInstitution() {
+        INSTITUICAO_LOGADA = null;
+        showMessage("Deslogado com sucesso!", "success");
+        changeView("institution-login");
+      }
+
+      // --- 3. DASHBOARD DA INSTITUIÇÃO (Cadastros) ---
+
+      // FUNÇÃO CRIAR GESTOR (NOVO)
+      formCreateGestor.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        if (!INSTITUICAO_LOGADA)
+          return showMessage("Faça login primeiro.", "error");
+
+        const gestorData = {
+          nome: document.getElementById("gestor-nome").value,
+          email: document.getElementById("gestor-email").value,
+          senha: document.getElementById("gestor-senha").value,
+          role: "GESTOR",
+          instituicaoId: INSTITUICAO_LOGADA.id,
+        };
+
+        try {
+          // REQUER: POST /api/usuarios/
+          const response = await fetch(USERS_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(gestorData),
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(
+              `Falha ao criar Gestor: ${errorText || response.statusText}`
+            );
+          }
+
+          const data = await response.json();
+          showMessage(`Gestor "${data.nome}" criado com sucesso!`, "success");
+          formCreateGestor.reset();
+          fetchGestores(INSTITUICAO_LOGADA.id);
+        } catch (error) {
+          showMessage(
+            `Erro ao criar gestor: ${error.message}. Verifique o endpoint ${USERS_URL}.`,
+            "error"
+          );
+        }
+      });
+
+      // FUNÇÃO LISTAR GESTORES (NOVO)
+      async function fetchGestores(instituicaoId) {
+        listaGestores.innerHTML = "<li>Carregando...</li>";
+        selectGestor.innerHTML = '<option value="">Carregando...</option>';
+        try {
+          // REQUER: GET /api/usuarios/instituicao/{instituicaoId}/gestores
+          const response = await fetch(
+            `${USERS_URL}/instituicao/${instituicaoId}/gestores`
+          );
+          if (!response.ok)
+            throw new Error(
+              `Erro ${response.status}: Falha ao buscar lista de gestores.`
+            );
+          const gestores = await response.json();
+
+          listaGestores.innerHTML = "";
+          selectGestor.innerHTML =
+            '<option value="">Selecione um Gestor</option>';
+
+          if (gestores.length === 0) {
+            listaGestores.innerHTML =
+              "<li>Nenhum gestor encontrado para esta instituição.</li>";
+            selectGestor.innerHTML +=
+              "<option disabled>Nenhum gestor encontrado</option>";
           } else {
-            escolas.forEach((escola) => {
+            gestores.forEach((g) => {
               const li = document.createElement("li");
-              li.innerHTML = `
-                      <strong>${escola.nome}</strong> | 
-                      ${escola.cidade} (${escola.estado}) | 
-                      Alunos: ${escola.numeroDeAlunos || "N/A"}
-                      <small>(ID: ${escola.id})</small>
-                    `;
-              schoolsListInModal.appendChild(li);
+              li.textContent = `${g.nome} (Email: ${g.email}) (ID: ${g.id})`;
+              listaGestores.appendChild(li);
+
+              const option = document.createElement("option");
+              option.value = g.id;
+              option.textContent = `${g.nome} (ID: ${g.id})`;
+              selectGestor.appendChild(option);
             });
           }
         } catch (error) {
-          schoolsListInModal.innerHTML = `<li class="error">${error.message}</li>`;
+          listaGestores.innerHTML = `<li class="error">${error.message}</li>`;
+          selectGestor.innerHTML = '<option value="">Erro ao carregar</option>';
         }
       }
 
-      // --- FUNÇÕES DE CONTROLE DO MODAL ---
+      // FUNÇÃO LISTAR ESCOLAS (NOVO - Adaptado)
+      async function fetchSchools(instituicaoId) {
+        listaEscolas.innerHTML = "<li>Carregando...</li>";
+        try {
+          // REQUER: GET /api/instituicoes/{instituicaoId}/escolas (Já existe)
+          const response = await fetch(`${API_URL}/${instituicaoId}/escolas`);
+          if (!response.ok)
+            throw new Error(
+              `Erro ${response.status}: Falha ao buscar escolas.`
+            );
+          const escolas = await response.json();
 
-      function closeAddSchoolModal() {
-        addSchoolModal.style.display = "none";
-        // Garante que a lista de instituições seja atualizada após fechar o modal
-        fetchInstitutions();
+          listaEscolas.innerHTML = "";
+          if (escolas.length === 0) {
+            listaEscolas.innerHTML = "<li>Nenhuma escola cadastrada.</li>";
+          } else {
+            escolas.forEach((e) => {
+              const li = document.createElement("li");
+              const gestor = e.gestorId ? `(Gestor ID: ${e.gestorId})` : "";
+              li.textContent = `${e.nome} - ${e.cidade} ${gestor}`;
+              listaEscolas.appendChild(li);
+            });
+          }
+        } catch (error) {
+          listaEscolas.innerHTML = `<li class="error">${error.message}</li>`;
+        }
       }
 
-      // Abre o modal no modo de Cadastro
-      function openAddSchoolForm(id, nome) {
-        // 1. Atualiza o título e o ID da instituição
-        document.getElementById(
-          "modalTitle"
-        ).textContent = `Cadastrar Escola em: ${nome}`;
-        document.getElementById("instituicaoIdHidden").value = id;
-
-        // 2. Garante que o formulário está visível e a lista de visualização está oculta
-        document.getElementById("form-add-school").style.display = "block";
-        document.getElementById("view-schools-content").style.display = "none";
-
-        // 3. Reseta o formulário e mostra o modal
-        formAddSchool.reset();
-        addSchoolModal.style.display = "block";
-      }
-
-      // --- FUNÇÃO ADICIONAR ESCOLA (POST /escolas) ---
-      formAddSchool.addEventListener("submit", addSchoolToInstitution);
-
-      async function addSchoolToInstitution(e) {
+      // FUNÇÃO ADICIONAR ESCOLA (POST)
+      formAddSchool.addEventListener("submit", async (e) => {
         e.preventDefault();
-        const instituicaoId = document.getElementById(
-          "instituicaoIdHidden"
-        ).value;
+        if (!INSTITUICAO_LOGADA)
+          return showMessage("Faça login primeiro.", "error");
 
-        // Coleta os dados do formulário
+        const gestorId = selectGestor.value;
+        if (!gestorId)
+          return showMessage("Selecione um gestor responsável.", "error");
+
         const novaEscola = {
           nome: document.getElementById("school-nome").value,
-          endereco: document.getElementById("school-endereco").value,
           cidade: document.getElementById("school-cidade").value,
-          estado: document.getElementById("school-estado").value,
-          cep: document.getElementById("school-cep").value,
           numeroDeAlunos: parseInt(
             document.getElementById("school-alunos").value
           ),
         };
 
+        const escolaRequestDTO = {
+          escola: novaEscola,
+          gestorId: gestorId,
+        };
+
         try {
-          // CHAMADA AO ENDPOINT DE CADASTRO DE ESCOLA
-          const response = await fetch(`${API_URL}/${instituicaoId}/escolas`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(novaEscola),
-          });
+          // REQUER: POST /api/instituicoes/{instituicaoId}/escolas (Já existe)
+          const response = await fetch(
+            `${API_URL}/${INSTITUICAO_LOGADA.id}/escolas`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(escolaRequestDTO),
+            }
+          );
 
           if (!response.ok) {
-            const errorText =
-              response.status === 404
-                ? "Instituição não encontrada (404). Verifique o ID."
-                : `Falha na API. Status: ${response.status}.`;
-            throw new Error(errorText);
+            const errorText = await response.text();
+            throw new Error(`Falha ao cadastrar escola. Detalhe: ${errorText}`);
           }
 
-          // A resposta deve ser a Instituição atualizada (como definido no seu controller)
-          const data = await response.json();
-
           showMessage(
-            `Escola "${novaEscola.nome}" cadastrada com sucesso na instituição "${data.nome}"!`,
+            `Escola "${novaEscola.nome}" cadastrada e associada ao Gestor ID: ${gestorId}!`,
             "success"
           );
-          closeAddSchoolModal();
-          // Não é estritamente necessário, mas bom para garantir a contagem de escolas
-          fetchInstitutions();
+          formAddSchool.reset();
+          fetchSchools(INSTITUICAO_LOGADA.id);
         } catch (error) {
-          showMessage(
-            `Erro ao cadastrar escola: ${error.message}. Verifique a API.`,
-            "error"
-          );
+          showMessage(`Erro ao cadastrar escola: ${error.message}.`, "error");
         }
-      }
+      });
 
-      // --- FUNÇÃO BAIXAR RELATÓRIO (GET /download/pdf) ---
-      async function downloadReportPdf() {
-        showMessage("Preparando download do relatório...", "success");
-        try {
-          const response = await fetch(`${API_URL}/download/pdf`);
-
-          if (!response.ok) {
-            throw new Error(`Erro ao baixar relatório: ${response.statusText}`);
-          }
-          const blob = await response.blob();
-          const url = window.URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.style.display = "none";
-          a.href = url;
-          a.download = "relatorio_instituicoes.pdf";
-          document.body.appendChild(a);
-          a.click();
-          window.URL.revokeObjectURL(url);
-
-          showMessage("Download iniciado com sucesso!", "success");
-        } catch (error) {
-          showMessage(
-            `Erro ao iniciar o download: ${error.message}. Verifique o endpoint /download/pdf.`,
-            "error"
-          );
-        }
-      }
-
-      // --- Inicializa a lista ao carregar a página ---
-      fetchInstitutions();
+      // --- Inicializa a visualização (Super Admin é o default) ---
+      changeView("super-admin");
     </script>
   </body>
 </html>

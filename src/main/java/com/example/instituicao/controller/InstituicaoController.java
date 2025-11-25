@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.instituicao.dto.EscolaRequest;
 import com.example.instituicao.model.Instituicao;
 import com.example.instituicao.model.UnidadesEscolares;
 import com.example.instituicao.service.InstituicaoService;
@@ -26,14 +27,12 @@ public class InstituicaoController {
 
     @Autowired
     private InstituicaoService instituicaoService;
-
-   @PostMapping("/{instituicaoId}/escolas")
+@PostMapping("/{instituicaoId}/escolas")
     public ResponseEntity<Instituicao> adicionarEscola(
-        @PathVariable String instituicaoId, 
-        @RequestBody UnidadesEscolares escola) 
-    {
-        
-        Instituicao instituicaoAtualizada = instituicaoService.adicionarEscola(instituicaoId, escola); 
+            @PathVariable String instituicaoId,
+            @RequestBody EscolaRequest request) {
+
+        Instituicao instituicaoAtualizada = instituicaoService.adicionarEscola(instituicaoId, request);
         return ResponseEntity.ok(instituicaoAtualizada);
     }
     @PostMapping
