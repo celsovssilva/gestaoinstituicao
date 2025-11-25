@@ -16,7 +16,7 @@ public class Usuarios {
     private String id;
     private String nome;
     private String email;
-    private String senhaHash;
+    private String senha_hash;
     private String papel; 
     private Boolean status;
     private LocalDateTime criado_em;

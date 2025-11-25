@@ -32,18 +32,19 @@ public class InstituicaoService {
 
     @Autowired
     private UsuariosRepository usuariosRepository;
-public Instituicao autenticarInstituicao(String nome, String senha) {
-        
-        Instituicao instituicao = instituicaoRepository.findByNome(nome) 
-            .orElseThrow(() -> new RuntimeException("Nome ou senha da Instituição inválidos."));
-        
-      
-        if (!instituicao.getSenha().equals(senha)) { 
+
+    public Instituicao autenticarInstituicao(String nome, String senha) {
+
+        Instituicao instituicao = instituicaoRepository.findByNome(nome)
+                .orElseThrow(() -> new RuntimeException("Nome ou senha da Instituição inválidos."));
+
+        if (!instituicao.getSenha().equals(senha)) {
             throw new RuntimeException("Nome ou senha da Instituição inválidos.");
         }
-        
+
         return instituicao;
     }
+    
     public Instituicao adicionarEscola(String instituicaoId, EscolaRequest request) {
 
         Instituicao instituicao = instituicaoRepository.findById(instituicaoId)
@@ -107,7 +108,41 @@ public Instituicao autenticarInstituicao(String nome, String senha) {
         Instituicao instituicao = buscarPorId(idInstituicao);
         return instituicao.getEscolas();
     }
+
+    public Usuarios criarGestor(String instituicaoId, Usuarios gestor) {
+        if (!instituicaoRepository.existsById(instituicaoId)) {
+            throw new RuntimeException("Instituição não encontrada com ID: " + instituicaoId);
+        }
+        gestor.setInstituicaoId(instituicaoId);
+        gestor.setPapel("GESTOR");
+        return usuariosRepository.save(gestor);
+    }
+
+    public Usuarios buscarGestorPorId(String gestorId) {
+        return usuariosRepository.findById(gestorId)
+                .orElseThrow(() -> new RuntimeException("Gestor não encontrado com ID: " + gestorId));
+    }
+
+    public Usuarios atualizarGestor(Long instituicaoId, String gestorId, Usuarios dadosAtualizados) {
+        Usuarios gestorExistente = usuariosRepository.findById(gestorId)
+                .orElseThrow(() -> new RuntimeException("Gestor não encontrado com ID: " + gestorId));
+
+        if (!gestorExistente.getInstituicaoId().equals(instituicaoId)) {
+            throw new RuntimeException("O gestor não pertence à instituição com ID: " + instituicaoId);
+        }
+
+        gestorExistente.setNome(dadosAtualizados.getNome());
+        gestorExistente.setEmail(dadosAtualizados.getEmail());
+        gestorExistente.setSenha_hash(dadosAtualizados.getSenha_hash());
+
+        return usuariosRepository.save(gestorExistente);
+    }
     
+    public void deletarGestor(String gestorId) {
+        
+        usuariosRepository.deleteById(gestorId);
+    }
+
 
 
     public byte[] criarPdfDasInstituicoes(List<Instituicao> instituicoes) {

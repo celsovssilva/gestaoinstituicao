@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -18,6 +20,8 @@ import org.springframework.web.bind.annotation.RestController;
 import com.example.instituicao.dto.EscolaRequest;
 import com.example.instituicao.model.Instituicao;
 import com.example.instituicao.model.UnidadesEscolares;
+import com.example.instituicao.model.Usuarios;
+import com.example.instituicao.repository.UsuariosRepository;
 import com.example.instituicao.service.InstituicaoService;
 
 @RestController
@@ -27,6 +31,67 @@ public class InstituicaoController {
 
     @Autowired
     private InstituicaoService instituicaoService;
+
+    @Autowired
+    private UsuariosRepository usuariosRepository;
+
+    @PostMapping("/{instituicaoId}/gestores")
+    public ResponseEntity<Usuarios> cadastrarGestor(
+            @PathVariable String instituicaoId,
+            @RequestBody Usuarios gestor
+    ) {
+        try {
+            Usuarios novoGestor = instituicaoService.criarGestor(instituicaoId, gestor);
+            return new ResponseEntity<>(novoGestor, HttpStatus.CREATED);
+        } catch (RuntimeException e) {
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    @GetMapping("/{instituicaoId}/gestores")
+    public ResponseEntity<List<Usuarios>> listarGestores(
+            @PathVariable String gestorId
+    ) {
+        try {
+            Usuarios gestores = instituicaoService.buscarGestorPorId(gestorId);
+            return new ResponseEntity<>(List.of(gestores), HttpStatus.OK);
+        } catch (RuntimeException e) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+    }
+    
+    @PutMapping("/{instituicaoId}/gestores/{gestorId}")
+    public ResponseEntity<Usuarios> atualizarGestor(
+            @PathVariable Long instituicaoId,
+            @PathVariable String gestorId,
+            @RequestBody Usuarios dadosAtualizados
+    ) {
+        try {
+            Usuarios gestorAtualizado = instituicaoService.atualizarGestor(instituicaoId, gestorId, dadosAtualizados);
+            return ResponseEntity.ok(gestorAtualizado);
+        } catch (RuntimeException e) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+    }
+    
+
+    @DeleteMapping("/{instituicaoId}/gestores/{gestorId}")
+    public ResponseEntity<Void> deletarGestor(
+        
+            @PathVariable String gestorId
+    ) {
+        try {
+            instituicaoService.deletarGestor( gestorId);
+            return new ResponseEntity<>(HttpStatus.NO_CONTENT); // 204
+        } catch (RuntimeException e) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND); // 404
+        }
+    }
+
+
+
+
+
 @PostMapping("/{instituicaoId}/escolas")
     public ResponseEntity<Instituicao> adicionarEscola(
             @PathVariable String instituicaoId,

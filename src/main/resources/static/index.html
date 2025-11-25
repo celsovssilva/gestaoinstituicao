@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <title>Gestão de Instituições - Múltiplos Acessos</title>
     <style>
-      /* --- Estilos CSS --- */
+      /* --- Estilos CSS (Mesmos estilos anteriores) --- */
       body {
         font-family: sans-serif;
         margin: 20px;
@@ -287,7 +287,6 @@
       // --- Variáveis Globais ---
       const API_URL = "http://localhost:8080/api/instituicoes";
       const AUTH_URL = "http://localhost:8080/api/auth";
-      const USERS_URL = "http://localhost:8080/api/usuarios";
 
       let INSTITUICAO_LOGADA = null;
 
@@ -364,13 +363,12 @@
         e.preventDefault();
         const nome = document.getElementById("nome").value;
         const cnpj = document.getElementById("cnpj").value;
-        // A senha agora é o CAMPO CRÍTICO que faltava na persistência
         const senha = document.getElementById("inst-senha").value;
 
         const novaInstituicao = {
           nome: nome,
           cnpj: cnpj,
-          senha: senha, // CORREÇÃO: Garante que a senha está no objeto
+          senha: senha,
           escolas: [],
         };
 
@@ -416,13 +414,13 @@
             const li = document.createElement("li");
             li.className = "list-group-item";
             li.innerHTML = `
-                        <div>
-                            <strong>${inst.nome}</strong> 
-                            <small>| ID: ${inst.id}</small>
-                        </div>
-                        <div>
-                            <button onclick="deleteInstitution('${inst.id}')" class="delete-btn">Deletar</button>
-                        </div>
+                      <div>
+                        <strong>${inst.nome}</strong> 
+                        <small>| ID: ${inst.id}</small>
+                      </div>
+                      <div>
+                        <button onclick="deleteInstitution('${inst.id}')" class="delete-btn">Deletar</button>
+                      </div>
                     `;
             listaInstituicoes.appendChild(li);
           });
@@ -456,27 +454,30 @@
 
       // FUNÇÃO PDF (mantida)
       async function downloadReportPdf() {
-        // Implementação omitida para brevidade
+        // Endpoint do controller: /api/instituicoes/download/pdf
+        try {
+          window.open(`${API_URL}/download/pdf`, "_blank");
+        } catch (error) {
+          showMessage(`Erro ao iniciar download: ${error.message}`, "error");
+        }
       }
 
       // --- 2. LOGIN DA INSTITUIÇÃO ---
 
       formInstitutionLogin.addEventListener("submit", async (e) => {
         e.preventDefault();
-        const login = document.getElementById("login-login").value; // Valor do Nome da Instituição
+        const login = document.getElementById("login-login").value;
         const senha = document.getElementById("login-senha").value;
 
         try {
           const response = await fetch(`${AUTH_URL}/login`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            // CORREÇÃO FINAL: Envia 'nome' (login) em vez de 'email', alinhando com o Controller.getNome()
             body: JSON.stringify({ nome: login, senha: senha }),
           });
 
           if (!response.ok) {
             const errorText = await response.text();
-            // Retorna a mensagem de erro do backend (e.g., "Nome ou senha inválidos")
             throw new Error(
               `Falha de Login: ${errorText || response.statusText}`
             );
@@ -503,7 +504,7 @@
 
       // --- 3. DASHBOARD DA INSTITUIÇÃO (Cadastros) ---
 
-      // FUNÇÃO CRIAR GESTOR (NOVO)
+      // FUNÇÃO CRIAR GESTOR (POST para /api/instituicoes/{id}/gestores)
       formCreateGestor.addEventListener("submit", async (e) => {
         e.preventDefault();
         if (!INSTITUICAO_LOGADA)
@@ -512,14 +513,14 @@
         const gestorData = {
           nome: document.getElementById("gestor-nome").value,
           email: document.getElementById("gestor-email").value,
-          senha: document.getElementById("gestor-senha").value,
-          role: "GESTOR",
-          instituicaoId: INSTITUICAO_LOGADA.id,
+          // 🔑 CORREÇÃO CRÍTICA: Se o backend usa 'senha_hash' (como no seu MongoDB), precisamos enviar com essa chave.
+          senha_hash: document.getElementById("gestor-senha").value,
         };
 
+        const URL_CADASTRO_GESTOR = `${API_URL}/${INSTITUICAO_LOGADA.id}/gestores`;
+
         try {
-          // REQUER: POST /api/usuarios/
-          const response = await fetch(USERS_URL, {
+          const response = await fetch(URL_CADASTRO_GESTOR, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(gestorData),
@@ -538,25 +539,27 @@
           fetchGestores(INSTITUICAO_LOGADA.id);
         } catch (error) {
           showMessage(
-            `Erro ao criar gestor: ${error.message}. Verifique o endpoint ${USERS_URL}.`,
+            `Erro ao criar gestor (400?): ${error.message}. Verifique se a Entidade/DTO no Java usa 'senha_hash'.`,
             "error"
           );
         }
       });
 
-      // FUNÇÃO LISTAR GESTORES (NOVO)
+      // FUNÇÃO LISTAR GESTORES (GET para /api/instituicoes/{id}/gestores)
       async function fetchGestores(instituicaoId) {
         listaGestores.innerHTML = "<li>Carregando...</li>";
         selectGestor.innerHTML = '<option value="">Carregando...</option>';
         try {
-          // REQUER: GET /api/usuarios/instituicao/{instituicaoId}/gestores
-          const response = await fetch(
-            `${USERS_URL}/instituicao/${instituicaoId}/gestores`
-          );
+          // URL: /api/instituicoes/{instituicaoId}/gestores
+          const URL_LISTA_GESTOR = `${API_URL}/${instituicaoId}/gestores`;
+
+          const response = await fetch(URL_LISTA_GESTOR);
+
           if (!response.ok)
             throw new Error(
-              `Erro ${response.status}: Falha ao buscar lista de gestores.`
+              `Erro ${response.status}: Falha ao buscar lista de gestores. (Verifique se corrigiu o Controller para buscar a LISTA pelo 'instituicaoId').`
             );
+
           const gestores = await response.json();
 
           listaGestores.innerHTML = "";
@@ -571,7 +574,16 @@
           } else {
             gestores.forEach((g) => {
               const li = document.createElement("li");
-              li.textContent = `${g.nome} (Email: ${g.email}) (ID: ${g.id})`;
+              li.className = "list-group-item";
+              li.innerHTML = `
+                <div>
+                  <strong>${g.nome}</strong> 
+                  <small>| Email: ${g.email} | ID: ${g.id}</small>
+                </div>
+                <div>
+                  <button onclick="deleteGestor('${INSTITUICAO_LOGADA.id}', '${g.id}')" class="delete-btn">Deletar</button>
+                </div>
+              `;
               listaGestores.appendChild(li);
 
               const option = document.createElement("option");
@@ -586,11 +598,39 @@
         }
       }
 
-      // FUNÇÃO LISTAR ESCOLAS (NOVO - Adaptado)
+      // FUNÇÃO DELETAR GESTOR
+      async function deleteGestor(instituicaoId, gestorId) {
+        if (
+          !window.confirm(
+            `Tem certeza que deseja deletar o Gestor ID ${gestorId}?`
+          )
+        )
+          return;
+
+        try {
+          // DELETE /api/instituicoes/{instituicaoId}/gestores/{gestorId}
+          const response = await fetch(
+            `${API_URL}/${instituicaoId}/gestores/${gestorId}`,
+            {
+              method: "DELETE",
+            }
+          );
+
+          if (response.status === 204) {
+            showMessage(`Gestor ${gestorId} deletado com sucesso!`, "success");
+            fetchGestores(instituicaoId);
+          } else {
+            throw new Error(`Status ${response.status} ao deletar.`);
+          }
+        } catch (error) {
+          showMessage(`Erro ao deletar gestor: ${error.message}`, "error");
+        }
+      }
+
+      // FUNÇÃO LISTAR ESCOLAS (GET para /api/instituicoes/{id}/escolas)
       async function fetchSchools(instituicaoId) {
         listaEscolas.innerHTML = "<li>Carregando...</li>";
         try {
-          // REQUER: GET /api/instituicoes/{instituicaoId}/escolas (Já existe)
           const response = await fetch(`${API_URL}/${instituicaoId}/escolas`);
           if (!response.ok)
             throw new Error(
@@ -604,8 +644,9 @@
           } else {
             escolas.forEach((e) => {
               const li = document.createElement("li");
+              // Supondo que o DTO de Escola tem nome, cidade, numeroDeAlunos e gestorId
               const gestor = e.gestorId ? `(Gestor ID: ${e.gestorId})` : "";
-              li.textContent = `${e.nome} - ${e.cidade} ${gestor}`;
+              li.textContent = `${e.nome} - ${e.cidade} (${e.numeroDeAlunos} alunos) ${gestor}`;
               listaEscolas.appendChild(li);
             });
           }
@@ -614,7 +655,7 @@
         }
       }
 
-      // FUNÇÃO ADICIONAR ESCOLA (POST)
+      // FUNÇÃO ADICIONAR ESCOLA (POST para /api/instituicoes/{id}/escolas)
       formAddSchool.addEventListener("submit", async (e) => {
         e.preventDefault();
         if (!INSTITUICAO_LOGADA)
@@ -632,13 +673,13 @@
           ),
         };
 
+        // O Controller espera um DTO chamado EscolaRequest que contém a Escola e o gestorId
         const escolaRequestDTO = {
           escola: novaEscola,
           gestorId: gestorId,
         };
 
         try {
-          // REQUER: POST /api/instituicoes/{instituicaoId}/escolas (Já existe)
           const response = await fetch(
             `${API_URL}/${INSTITUICAO_LOGADA.id}/escolas`,
             {
