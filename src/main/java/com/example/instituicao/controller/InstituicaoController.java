@@ -33,36 +33,38 @@ public class InstituicaoController {
     private InstituicaoService instituicaoService;
 
     @Autowired
-    private UsuariosRepository usuariosRepository;
+    private UsuariosRepository usuarioRepository;
 
-    @PostMapping("/{instituicaoId}/gestores")
-    public ResponseEntity<Usuarios> cadastrarGestor(
-            @PathVariable String instituicaoId,
-            @RequestBody Usuarios gestor
-    ) {
-        try {
-            Usuarios novoGestor = instituicaoService.criarGestor(instituicaoId, gestor);
-            return new ResponseEntity<>(novoGestor, HttpStatus.CREATED);
-        } catch (RuntimeException e) {
-            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
-        }
+   
+ @PostMapping("/{instituicaoId}/gestores")
+public ResponseEntity<Usuarios> cadastrarGestor(
+        @PathVariable String instituicaoId,
+        @RequestBody Usuarios gestor
+) {
+    try {
+        System.out.println("🚀 DADOS RECEBIDOS NO BACKEND:");
+        System.out.println("Instituição ID: " + instituicaoId);
+        System.out.println("Gestor Nome: " + gestor.getNome());
+        System.out.println("Gestor Email: " + gestor.getEmail());
+        System.out.println("Gestor Senha: " + gestor.getSenha_hash());
+        
+        Usuarios novoGestor = instituicaoService.criarGestor(instituicaoId, gestor);
+        
+        System.out.println("✅ GESTOR SALVO: " + novoGestor.getId());
+        return new ResponseEntity<>(novoGestor, HttpStatus.CREATED);
+        
+    } catch (RuntimeException e) {
+        System.out.println("❌ ERRO NO BACKEND: " + e.getMessage());
+        e.printStackTrace();
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
     }
+}
 
-    @GetMapping("/{instituicaoId}/gestores")
-    public ResponseEntity<List<Usuarios>> listarGestores(
-            @PathVariable String gestorId
-    ) {
-        try {
-            Usuarios gestores = instituicaoService.buscarGestorPorId(gestorId);
-            return new ResponseEntity<>(List.of(gestores), HttpStatus.OK);
-        } catch (RuntimeException e) {
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-        }
-    }
+    
     
     @PutMapping("/{instituicaoId}/gestores/{gestorId}")
     public ResponseEntity<Usuarios> atualizarGestor(
-            @PathVariable Long instituicaoId,
+            @PathVariable String instituicaoId, 
             @PathVariable String gestorId,
             @RequestBody Usuarios dadosAtualizados
     ) {
@@ -73,44 +75,35 @@ public class InstituicaoController {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
     }
-    
 
     @DeleteMapping("/{instituicaoId}/gestores/{gestorId}")
-    public ResponseEntity<Void> deletarGestor(
-        
-            @PathVariable String gestorId
-    ) {
+    public ResponseEntity<Void> deletarGestor(@PathVariable String gestorId) {
         try {
-            instituicaoService.deletarGestor( gestorId);
-            return new ResponseEntity<>(HttpStatus.NO_CONTENT); // 204
+            instituicaoService.deletarGestor(gestorId);
+            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
         } catch (RuntimeException e) {
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND); // 404
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
     }
 
-
-
-
-
-@PostMapping("/{instituicaoId}/escolas")
+    @PostMapping("/{instituicaoId}/escolas")
     public ResponseEntity<Instituicao> adicionarEscola(
             @PathVariable String instituicaoId,
             @RequestBody EscolaRequest request) {
-
         Instituicao instituicaoAtualizada = instituicaoService.adicionarEscola(instituicaoId, request);
         return ResponseEntity.ok(instituicaoAtualizada);
     }
+
     @PostMapping
     public ResponseEntity<Instituicao> criarInstituicao(@RequestBody Instituicao instituicao) {
         Instituicao nova = instituicaoService.criar(instituicao);
         return ResponseEntity.ok(nova);
     }
 
-
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletarInstituicao(@PathVariable String id) {
         instituicaoService.deletar(id);
-        return ResponseEntity.noContent().build(); // Retorna 204 (Sem Conteúdo)
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{id}")
@@ -118,7 +111,6 @@ public class InstituicaoController {
         return ResponseEntity.ok(instituicaoService.buscarPorId(id));
     }
     
- 
     @GetMapping
     public ResponseEntity<List<Instituicao>> listarInstituicoes() {
         return ResponseEntity.ok(instituicaoService.listarTodas());
@@ -128,11 +120,16 @@ public class InstituicaoController {
     public ResponseEntity<List<UnidadesEscolares>> listarEscolasDaInstituicao(@PathVariable String id) {
         return ResponseEntity.ok(instituicaoService.listarEscolas(id));
     }
+
+    @GetMapping("/{instituicaoId}/gestores")
+    public List<Usuarios> listarGestoresPorInstituicao(String instituicaoId) {
+   
+    return usuarioRepository.findByInstituicaoIdAndPapel(instituicaoId, "GESTOR");
+}
+
     @GetMapping("/download/pdf")
     public ResponseEntity<byte[]> downloadRelatorio() {
-        
         byte[] pdfBytes = instituicaoService.criarPdfDasInstituicoes(instituicaoService.listarTodas());
-
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"relatorio_instituicoes.pdf\"")
                 .contentType(MediaType.APPLICATION_PDF)

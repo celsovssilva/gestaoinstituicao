@@ -1,6 +1,7 @@
 package com.example.instituicao.service;
 
 import java.io.ByteArrayOutputStream;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -20,6 +21,7 @@ import com.itextpdf.layout.Document;
 import com.itextpdf.layout.element.Paragraph;
 import com.itextpdf.layout.element.Table;
 import com.itextpdf.layout.properties.UnitValue;
+
 
 @Service
 public class InstituicaoService {
@@ -109,21 +111,46 @@ public class InstituicaoService {
         return instituicao.getEscolas();
     }
 
-    public Usuarios criarGestor(String instituicaoId, Usuarios gestor) {
-        if (!instituicaoRepository.existsById(instituicaoId)) {
-            throw new RuntimeException("Instituição não encontrada com ID: " + instituicaoId);
-        }
-        gestor.setInstituicaoId(instituicaoId);
-        gestor.setPapel("GESTOR");
-        return usuariosRepository.save(gestor);
+   public Usuarios criarGestor(String instituicaoId, Usuarios gestor) {
+    System.out.println("🔍 SERVICE - Criando gestor...");
+    
+
+    if (!instituicaoRepository.existsById(instituicaoId)) {
+        throw new RuntimeException("Instituição não encontrada");
     }
 
-    public Usuarios buscarGestorPorId(String gestorId) {
-        return usuariosRepository.findById(gestorId)
-                .orElseThrow(() -> new RuntimeException("Gestor não encontrado com ID: " + gestorId));
-    }
+ 
+    System.out.println("- Nome: " + gestor.getNome());
+    System.out.println("- Email: " + gestor.getEmail());
+    System.out.println("- Senha: " + gestor.getSenha_hash());
 
-    public Usuarios atualizarGestor(Long instituicaoId, String gestorId, Usuarios dadosAtualizados) {
+    gestor.setInstituicaoId(instituicaoId);
+    gestor.setPapel("GESTOR");
+    gestor.setStatus(true);
+    gestor.setCriado_em(LocalDateTime.now());
+    gestor.setAtualizado_em(LocalDateTime.now());
+
+    try {
+        Usuarios gestorSalvo = usuariosRepository.save(gestor);
+        System.out.println("💾 GESTOR SALVO NO BANCO - ID: " + gestorSalvo.getId());
+        return gestorSalvo;
+    } catch (Exception e) {
+        System.out.println("💥 ERRO AO SALVAR NO BANCO: " + e.getMessage());
+        throw e;
+    }
+}
+
+
+public Usuarios buscarGestorPorId(String gestorId) {
+    return usuariosRepository.findById(gestorId)
+            .orElseThrow(() -> new RuntimeException("Gestor não encontrado com ID: " + gestorId));
+}
+    public List<Usuarios> listarGestoresPorInstituicao(String instituicaoId) {
+   
+    return usuariosRepository.findByInstituicaoIdAndPapel(instituicaoId, "GESTOR");
+}
+
+    public Usuarios atualizarGestor(String instituicaoId, String gestorId, Usuarios dadosAtualizados) {
         Usuarios gestorExistente = usuariosRepository.findById(gestorId)
                 .orElseThrow(() -> new RuntimeException("Gestor não encontrado com ID: " + gestorId));
 

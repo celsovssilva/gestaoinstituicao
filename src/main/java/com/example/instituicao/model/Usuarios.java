@@ -3,6 +3,7 @@ package com.example.instituicao.model;
 import java.time.LocalDateTime;
 
 import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -21,7 +22,11 @@ public class Usuarios {
     private Boolean status;
     private LocalDateTime criado_em;
     private LocalDateTime atualizado_em;
+
+    @Field("instituicao_id")
     private String instituicaoId;
+    @Field("unidade_escolar_id")
+    private String unidadeEscolarId;
     
     
 }
