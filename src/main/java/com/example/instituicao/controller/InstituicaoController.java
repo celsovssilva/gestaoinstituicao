@@ -17,7 +17,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.instituicao.dto.ComunicadoRequest;
 import com.example.instituicao.dto.EscolaRequest;
+import com.example.instituicao.model.Comunicado;
 import com.example.instituicao.model.Instituicao;
 import com.example.instituicao.model.UnidadesEscolares;
 import com.example.instituicao.model.Usuarios;
@@ -135,4 +137,13 @@ public ResponseEntity<Usuarios> cadastrarGestor(
                 .contentType(MediaType.APPLICATION_PDF)
                 .body(pdfBytes);
     }
+
+    @PostMapping("/{instituicaoId}/comunicados")
+    public Comunicado enviarComunicado( @PathVariable String instituicaoId,
+        @RequestBody ComunicadoRequest comunicadoDTO) {
+        
+        
+        return instituicaoService.enviarComunicado(instituicaoId, comunicadoDTO);
+    }
+    
 }

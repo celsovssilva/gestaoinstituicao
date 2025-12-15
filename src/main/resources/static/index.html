@@ -2,7 +2,7 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <title>Gestão de Instituições - Com Lista de Gestores</title>
+    <title>Gestão de Instituições - Com Lista de Gestores e Comunicados</title>
     <style>
       body {
         font-family: sans-serif;
@@ -28,13 +28,18 @@
         background-color: #fff;
         margin-bottom: 20px;
       }
+      /* ATUALIZADO: Contêineres de topo do Dashboard agora lado a lado */
+      #institution-dashboard-section .dashboard-top-container {
+        display: flex;
+        gap: 30px;
+        margin-bottom: 20px;
+      }
       #super-admin-section .container {
         flex-direction: row;
       }
       #institution-dashboard-section .container {
-        flex-direction: column;
-        max-width: 800px;
-        margin: 0 auto;
+        /* Mantido para a lista de gestores/escolas */
+        flex-direction: row;
       }
       #institution-login-section {
         max-width: 400px;
@@ -79,6 +84,9 @@
       }
       .refresh-btn {
         background-color: #6c757d;
+      }
+      .comunicado-btn {
+        background-color: #009688; /* Cor Verde-Água para Comunicado */
       }
       .list-group {
         list-style: none;
@@ -212,7 +220,7 @@
         ID da Instituição Logada: <span id="logged-institution-id"></span>
       </p>
 
-      <div class="container">
+      <div class="dashboard-top-container">
         <section style="flex: 1">
           <h3>Cadastrar Novo Gestor 🧑‍💼</h3>
           <form id="form-create-gestor">
@@ -230,6 +238,29 @@
             </div>
             <button type="submit" style="background-color: #ff8c00">
               Cadastrar Gestor
+            </button>
+          </form>
+        </section>
+
+        <section style="flex: 1">
+          <h3>Enviar Comunicado a Gestor ✉️</h3>
+          <form id="form-send-comunicado">
+            <div class="form-group">
+              <label for="comunicado-gestor">Gestor Destinatário:</label>
+              <select id="comunicado-gestor" required>
+                <option value="">Carregando Gestores...</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="comunicado-assunto">Assunto:</label>
+              <input type="text" id="comunicado-assunto" required />
+            </div>
+            <div class="form-group">
+              <label for="comunicado-corpo">Mensagem:</label>
+              <textarea id="comunicado-corpo" rows="4" required></textarea>
+            </div>
+            <button type="submit" class="comunicado-btn">
+              Enviar Comunicado
             </button>
           </form>
         </section>
@@ -343,6 +374,13 @@
       const listaEscolas = document.getElementById("lista-escolas");
       const totalGestoresSpan = document.getElementById("total-gestores");
       const totalEscolasSpan = document.getElementById("total-escolas");
+
+      // NOVOS ELEMENTOS DOM PARA COMUNICADO
+      const formSendComunicado = document.getElementById(
+        "form-send-comunicado"
+      );
+      const selectComunicadoGestor =
+        document.getElementById("comunicado-gestor");
 
       // --- FUNÇÕES DE UTENSÍLIOS E VISUALIZAÇÃO ---
 
@@ -522,7 +560,7 @@
         changeView("institution-login");
       }
 
-      // --- 3. DASHBOARD DA INSTITUIÇÃO (Cadastros) ---
+      // --- 3. DASHBOARD DA INSTITUIÇÃO (Cadastros e Comunicação) ---
 
       // FUNÇÃO CRIAR GESTOR
       formCreateGestor.addEventListener("submit", async (e) => {
@@ -566,11 +604,13 @@
         }
       });
 
-      // FUNÇÃO LISTAR GESTORES - ATUALIZADA
+      // FUNÇÃO LISTAR GESTORES - ATUALIZADA PARA POPULAR DOIS SELECTS
       async function fetchGestores(instituicaoId) {
         listaGestores.innerHTML = "<li>Carregando gestores...</li>";
         selectGestor.innerHTML =
           '<option value="">Carregando gestores...</option>';
+        selectComunicadoGestor.innerHTML =
+          '<option value="">Carregando gestores...</option>'; // NOVO: Inicializa o select de comunicado
 
         try {
           const URL_LISTA_GESTOR = `${API_URL}/${instituicaoId}/gestores`;
@@ -579,7 +619,6 @@
           const response = await fetch(URL_LISTA_GESTOR);
 
           if (!response.ok) {
-            // Se der erro 405, significa que o endpoint GET não está implementado
             if (response.status === 405) {
               throw new Error(
                 "Endpoint de listagem de gestores não implementado no backend"
@@ -616,24 +655,39 @@
             });
           }
 
-          // Atualizar select de gestores para cadastro de escolas
+          // Atualizar select de gestores para cadastro de escolas (school-gestor)
           selectGestor.innerHTML =
             '<option value="">Selecione um gestor responsável</option>';
+          // Atualizar select de gestores para ENVIO DE COMUNICADO (comunicado-gestor)
+          selectComunicadoGestor.innerHTML =
+            '<option value="">Selecione o gestor destinatário</option>';
+
           if (gestores.length === 0) {
             selectGestor.innerHTML +=
               '<option value="" disabled>Nenhum gestor cadastrado</option>';
+            selectComunicadoGestor.innerHTML +=
+              '<option value="" disabled>Nenhum gestor cadastrado</option>';
           } else {
             gestores.forEach((g) => {
-              const option = document.createElement("option");
-              option.value = g.id;
-              option.textContent = `${g.nome} (${g.email})`;
-              selectGestor.appendChild(option);
+              // Select Escola
+              const optionSchool = document.createElement("option");
+              optionSchool.value = g.id;
+              optionSchool.textContent = `${g.nome} (${g.email})`;
+              selectGestor.appendChild(optionSchool);
+
+              // Select Comunicado (NOVO)
+              const optionCom = document.createElement("option");
+              optionCom.value = g.id;
+              optionCom.textContent = `${g.nome} - ${g.email}`;
+              selectComunicadoGestor.appendChild(optionCom);
             });
           }
         } catch (error) {
           console.error("❌ Erro ao carregar gestores:", error);
           listaGestores.innerHTML = `<li class="error">${error.message}</li>`;
           selectGestor.innerHTML =
+            '<option value="">Erro ao carregar gestores</option>';
+          selectComunicadoGestor.innerHTML =
             '<option value="">Erro ao carregar gestores</option>';
         }
       }
@@ -757,6 +811,59 @@
         } catch (error) {
           console.error("❌ Erro ao cadastrar escola:", error);
           showMessage(`Erro ao cadastrar escola: ${error.message}`, "error");
+        }
+      });
+
+      // NOVO: FUNÇÃO ENVIAR COMUNICADO
+      formSendComunicado.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        if (!INSTITUICAO_LOGADA)
+          return showMessage("Faça login primeiro.", "error");
+
+        const gestorId = selectComunicadoGestor.value;
+        const assunto = document.getElementById("comunicado-assunto").value;
+        const corpo = document.getElementById("comunicado-corpo").value;
+
+        if (!gestorId)
+          return showMessage("Selecione um gestor destinatário.", "error");
+
+        // DTO (Data Transfer Object) que será enviado ao backend
+        const comunicadoDTO = {
+          gestorId: gestorId,
+          assunto: assunto,
+          corpo: corpo,
+        };
+
+        const URL_COMUNICADO = `${API_URL}/${INSTITUICAO_LOGADA.id}/comunicados`; // Endpoint configurado no backend
+
+        console.log("📤 Enviando comunicado:", comunicadoDTO);
+
+        try {
+          const response = await fetch(URL_COMUNICADO, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(comunicadoDTO),
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(
+              `Falha ao enviar comunicado: ${errorText || response.statusText}`
+            );
+          }
+
+          const data = await response.json();
+          showMessage(
+            `Comunicado sobre "${data.assunto}" enviado com sucesso ao gestor!`,
+            "success"
+          );
+          formSendComunicado.reset();
+        } catch (error) {
+          console.error("❌ Erro ao enviar comunicado:", error);
+          showMessage(
+            `Erro ao enviar comunicado: ${error.message}. Verifique se o endpoint está ativo.`,
+            "error"
+          );
         }
       });
 

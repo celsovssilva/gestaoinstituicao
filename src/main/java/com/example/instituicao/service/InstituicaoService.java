@@ -7,11 +7,15 @@ import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.PathVariable;
 
+import com.example.instituicao.dto.ComunicadoRequest;
 import com.example.instituicao.dto.EscolaRequest;
+import com.example.instituicao.model.Comunicado;
 import com.example.instituicao.model.Instituicao;
 import com.example.instituicao.model.UnidadesEscolares;
 import com.example.instituicao.model.Usuarios;
+import com.example.instituicao.repository.ComunicadoRepository;
 import com.example.instituicao.repository.InstituicaoRepository;
 import com.example.instituicao.repository.UnidadesEscolaresRepository;
 import com.example.instituicao.repository.UsuariosRepository;
@@ -34,6 +38,9 @@ public class InstituicaoService {
 
     @Autowired
     private UsuariosRepository usuariosRepository;
+
+    @Autowired
+    private ComunicadoRepository comunicadoRepository;
 
     public Instituicao autenticarInstituicao(String nome, String senha) {
 
@@ -231,4 +238,26 @@ public Usuarios buscarGestorPorId(String gestorId) {
 
         return baos.toByteArray();
     }
-}
+
+    public Comunicado enviarComunicado(@PathVariable String instituicaoId, ComunicadoRequest comunicadoDTO) {
+      
+        if (!instituicaoRepository.existsById(instituicaoId)) {
+             throw new RuntimeException("Instituição remetente não encontrada.");
+        }
+        
+        
+        if (!usuariosRepository.existsById(comunicadoDTO.getGestorId())) { 
+             throw new RuntimeException("Gestor destinatário (usuário) não encontrado.");
+        }
+
+  
+        Comunicado novoComunicado = new Comunicado();
+        novoComunicado.setInstituicaoId(instituicaoId); // Remetente
+        novoComunicado.setGestorId(comunicadoDTO.getGestorId()); // Destinatário
+        novoComunicado.setAssunto(comunicadoDTO.getAssunto());
+        novoComunicado.setCorpo(comunicadoDTO.getCorpo());
+        
+      
+        return comunicadoRepository.save(novoComunicado);
+    }
+    }
