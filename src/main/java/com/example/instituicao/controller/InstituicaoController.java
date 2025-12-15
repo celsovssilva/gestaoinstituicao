@@ -122,7 +122,7 @@ public ResponseEntity<Usuarios> cadastrarGestor(
     }
 
     @GetMapping("/{instituicaoId}/gestores")
-    public List<Usuarios> listarGestoresPorInstituicao(String instituicaoId) {
+    public List<Usuarios> listarGestoresPorInstituicao(@PathVariable String instituicaoId) {
    
     return usuarioRepository.findByInstituicaoIdAndPapel(instituicaoId, "GESTOR");
 }
