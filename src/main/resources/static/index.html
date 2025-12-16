@@ -34,6 +34,12 @@
         gap: 30px;
         margin-bottom: 20px;
       }
+      /* NOVO: Container para Formulários de Gestão */
+      #institution-dashboard-section .dashboard-creation-container {
+        display: flex;
+        gap: 30px;
+        margin-bottom: 20px;
+      }
       #super-admin-section .container {
         flex-direction: row;
       }
@@ -57,6 +63,7 @@
       input[type="password"],
       textarea,
       input[type="number"],
+      input[type="date"], /* NOVO: Adicionado tipo date */
       select {
         width: 100%;
         padding: 8px;
@@ -87,6 +94,9 @@
       }
       .comunicado-btn {
         background-color: #009688; /* Cor Verde-Água para Comunicado */
+      }
+      .tarefa-btn {
+        background-color: #ffa500; /* Cor Laranja para Tarefa */
       }
       .list-group {
         list-style: none;
@@ -220,7 +230,7 @@
         ID da Instituição Logada: <span id="logged-institution-id"></span>
       </p>
 
-      <div class="dashboard-top-container">
+      <div class="dashboard-creation-container">
         <section style="flex: 1">
           <h3>Cadastrar Novo Gestor 🧑‍💼</h3>
           <form id="form-create-gestor">
@@ -266,6 +276,34 @@
         </section>
 
         <section style="flex: 1">
+          <h3>Criar Tarefa para Gestor 🎯</h3>
+          <form id="form-create-tarefa">
+            <div class="form-group">
+              <label for="tarefa-gestor">Gestor Responsável:</label>
+              <select id="tarefa-gestor" required>
+                <option value="">Carregando Gestores...</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="tarefa-titulo">Título:</label>
+              <input type="text" id="tarefa-titulo" required />
+            </div>
+            <div class="form-group">
+              <label for="tarefa-data-limite">Data Limite:</label>
+              <input type="date" id="tarefa-data-limite" required />
+            </div>
+            <div class="form-group">
+              <label for="tarefa-descricao">Descrição:</label>
+              <textarea id="tarefa-descricao" rows="3" required></textarea>
+            </div>
+            <button type="submit" class="tarefa-btn">Atribuir Tarefa</button>
+          </form>
+        </section>
+      </div>
+      <hr />
+
+      <div class="dashboard-top-container">
+        <section style="flex: 1">
           <h3>Cadastrar Nova Escola 🏫</h3>
           <form id="form-add-school">
             <div class="form-group">
@@ -299,6 +337,22 @@
               Cadastrar Escola
             </button>
           </form>
+        </section>
+
+        <section
+          style="
+            flex: 2;
+            padding: 20px;
+            border: 1px dashed #ccc;
+            border-radius: 8px;
+          "
+        >
+          <h4>Relatório de Status de Tarefas (A Implementar)</h4>
+          <p style="color: #666">
+            Após a criação, esta área exibirá as tarefas pendentes, concluídas e
+            atrasadas por Gestor, fazendo a requisição GET
+            /api/instituicoes/{id}/tarefas.
+          </p>
         </section>
       </div>
 
@@ -341,6 +395,7 @@
       // --- Variáveis Globais ---
       const API_URL = "http://localhost:8080/api/instituicoes";
       const AUTH_URL = "http://localhost:8080/api/auth";
+      const TAREFA_API_URL = "http://localhost:8080/api/tarefas"; // NOVO: URL base para Tarefas
 
       let INSTITUICAO_LOGADA = null;
 
@@ -375,12 +430,16 @@
       const totalGestoresSpan = document.getElementById("total-gestores");
       const totalEscolasSpan = document.getElementById("total-escolas");
 
-      // NOVOS ELEMENTOS DOM PARA COMUNICADO
+      // Elementos COMUNICADO
       const formSendComunicado = document.getElementById(
         "form-send-comunicado"
       );
       const selectComunicadoGestor =
         document.getElementById("comunicado-gestor");
+
+      // NOVO: Elementos TAREFA
+      const formCreateTarefa = document.getElementById("form-create-tarefa");
+      const selectTarefaGestor = document.getElementById("tarefa-gestor");
 
       // --- FUNÇÕES DE UTENSÍLIOS E VISUALIZAÇÃO ---
 
@@ -604,13 +663,15 @@
         }
       });
 
-      // FUNÇÃO LISTAR GESTORES - ATUALIZADA PARA POPULAR DOIS SELECTS
+      // FUNÇÃO LISTAR GESTORES - ATUALIZADA PARA POPULAR OS TRÊS SELECTS
       async function fetchGestores(instituicaoId) {
         listaGestores.innerHTML = "<li>Carregando gestores...</li>";
         selectGestor.innerHTML =
           '<option value="">Carregando gestores...</option>';
         selectComunicadoGestor.innerHTML =
-          '<option value="">Carregando gestores...</option>'; // NOVO: Inicializa o select de comunicado
+          '<option value="">Carregando gestores...</option>';
+        selectTarefaGestor.innerHTML =
+          '<option value="">Carregando gestores...</option>'; // NOVO: Inicializa o select de tarefa
 
         try {
           const URL_LISTA_GESTOR = `${API_URL}/${instituicaoId}/gestores`;
@@ -655,40 +716,50 @@
             });
           }
 
-          // Atualizar select de gestores para cadastro de escolas (school-gestor)
-          selectGestor.innerHTML =
-            '<option value="">Selecione um gestor responsável</option>';
-          // Atualizar select de gestores para ENVIO DE COMUNICADO (comunicado-gestor)
-          selectComunicadoGestor.innerHTML =
-            '<option value="">Selecione o gestor destinatário</option>';
+          // Resetar e popular todos os selects
+          const optionsPadrao =
+            '<option value="">Selecione o gestor...</option>';
+          selectGestor.innerHTML = optionsPadrao;
+          selectComunicadoGestor.innerHTML = optionsPadrao;
+          selectTarefaGestor.innerHTML = optionsPadrao; // NOVO: Reset Tarefa
 
           if (gestores.length === 0) {
-            selectGestor.innerHTML +=
+            const disabledOption =
               '<option value="" disabled>Nenhum gestor cadastrado</option>';
-            selectComunicadoGestor.innerHTML +=
-              '<option value="" disabled>Nenhum gestor cadastrado</option>';
+            selectGestor.innerHTML += disabledOption;
+            selectComunicadoGestor.innerHTML += disabledOption;
+            selectTarefaGestor.innerHTML += disabledOption; // NOVO: Opção desabilitada Tarefa
           } else {
             gestores.forEach((g) => {
+              const optionText = `${g.nome} (${g.email})`;
+
               // Select Escola
               const optionSchool = document.createElement("option");
               optionSchool.value = g.id;
-              optionSchool.textContent = `${g.nome} (${g.email})`;
+              optionSchool.textContent = optionText;
               selectGestor.appendChild(optionSchool);
 
-              // Select Comunicado (NOVO)
+              // Select Comunicado
               const optionCom = document.createElement("option");
               optionCom.value = g.id;
-              optionCom.textContent = `${g.nome} - ${g.email}`;
+              optionCom.textContent = optionText;
               selectComunicadoGestor.appendChild(optionCom);
+
+              // NOVO: Select Tarefa
+              const optionTarefa = document.createElement("option");
+              optionTarefa.value = g.id;
+              optionTarefa.textContent = optionText;
+              selectTarefaGestor.appendChild(optionTarefa);
             });
           }
         } catch (error) {
           console.error("❌ Erro ao carregar gestores:", error);
           listaGestores.innerHTML = `<li class="error">${error.message}</li>`;
-          selectGestor.innerHTML =
+          const errorOption =
             '<option value="">Erro ao carregar gestores</option>';
-          selectComunicadoGestor.innerHTML =
-            '<option value="">Erro ao carregar gestores</option>';
+          selectGestor.innerHTML = errorOption;
+          selectComunicadoGestor.innerHTML = errorOption;
+          selectTarefaGestor.innerHTML = errorOption; // NOVO: Erro Tarefa
         }
       }
 
@@ -814,7 +885,7 @@
         }
       });
 
-      // NOVO: FUNÇÃO ENVIAR COMUNICADO
+      // FUNÇÃO ENVIAR COMUNICADO
       formSendComunicado.addEventListener("submit", async (e) => {
         e.preventDefault();
         if (!INSTITUICAO_LOGADA)
@@ -827,14 +898,13 @@
         if (!gestorId)
           return showMessage("Selecione um gestor destinatário.", "error");
 
-        // DTO (Data Transfer Object) que será enviado ao backend
         const comunicadoDTO = {
           gestorId: gestorId,
           assunto: assunto,
           corpo: corpo,
         };
 
-        const URL_COMUNICADO = `${API_URL}/${INSTITUICAO_LOGADA.id}/comunicados`; // Endpoint configurado no backend
+        const URL_COMUNICADO = `${API_URL}/${INSTITUICAO_LOGADA.id}/comunicados`;
 
         console.log("📤 Enviando comunicado:", comunicadoDTO);
 
@@ -866,6 +936,75 @@
           );
         }
       });
+
+      // NOVO: FUNÇÃO CRIAR TAREFA
+      formCreateTarefa.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        if (!INSTITUICAO_LOGADA)
+          return showMessage("Faça login primeiro.", "error");
+
+        const gestorId = selectTarefaGestor.value;
+        const titulo = document.getElementById("tarefa-titulo").value;
+        const dataLimite = document.getElementById("tarefa-data-limite").value;
+        const descricao = document.getElementById("tarefa-descricao").value;
+
+        if (!gestorId)
+          return showMessage(
+            "Selecione um gestor responsável pela tarefa.",
+            "error"
+          );
+
+        if (!dataLimite)
+          return showMessage("Defina uma data limite para a tarefa.", "error");
+
+        // DTO (Data Transfer Object) para a Tarefa
+        const tarefaDTO = {
+          titulo: titulo,
+          descricao: descricao,
+          gestorId: gestorId,
+          dataLimite: dataLimite, // Formato yyyy-MM-dd
+          // O instituicaoId virá do Spring no Controller (ou pode ser incluído aqui se o Controller exigir)
+        };
+
+        // Usamos o TAREFA_API_URL pois a rota é simples: POST /api/tarefas
+        const URL_TAREFA = TAREFA_API_URL;
+
+        console.log("📤 Atribuindo tarefa:", tarefaDTO);
+
+        try {
+          const response = await fetch(URL_TAREFA, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              // Se você configurou no backend para receber o ID da Instituição via Header:
+              "X-INSTITUICAO-ID": INSTITUICAO_LOGADA.id,
+            },
+            body: JSON.stringify(tarefaDTO),
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(
+              `Falha ao atribuir tarefa: ${errorText || response.statusText}`
+            );
+          }
+
+          const data = await response.json();
+          showMessage(
+            `Tarefa "${data.titulo}" atribuída com sucesso! (ID: ${data.id})`,
+            "success"
+          );
+          formCreateTarefa.reset();
+          // Recarregar a lista de tarefas, se ela existisse
+        } catch (error) {
+          console.error("❌ Erro ao atribuir tarefa:", error);
+          showMessage(
+            `Erro ao atribuir tarefa: ${error.message}. Verifique o endpoint ${URL_TAREFA}.`,
+            "error"
+          );
+        }
+      });
+      // FIM NOVO: FUNÇÃO CRIAR TAREFA
 
       // --- Inicialização ---
       changeView("super-admin");
