@@ -2,7 +2,7 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <title>Gestão de Instituições - Com Lista de Gestores e Comunicados</title>
+    <title>Gestão de Instituições - Dashboard Completo</title>
     <style>
       body {
         font-family: sans-serif;
@@ -347,11 +347,18 @@
             border-radius: 8px;
           "
         >
-          <h4>Relatório de Status de Tarefas (A Implementar)</h4>
+          <h4>Relatório de Status de Tarefas</h4>
+          <button
+            onclick="downloadTaskReportCsv()"
+            class="pdf-btn"
+            style="margin-bottom: 15px"
+          >
+            ⬇️ Baixar Relatório (CSV)
+          </button>
           <p style="color: #666">
-            Após a criação, esta área exibirá as tarefas pendentes, concluídas e
-            atrasadas por Gestor, fazendo a requisição GET
-            /api/instituicoes/{id}/tarefas.
+            Esta área exibe as tarefas pendentes, concluídas e atrasadas por
+            Gestor, fazendo a requisição GET /api/tarefas (JSON) ou para
+            download /api/tarefas/download-csv.
           </p>
         </section>
       </div>
@@ -395,7 +402,7 @@
       // --- Variáveis Globais ---
       const API_URL = "http://localhost:8080/api/instituicoes";
       const AUTH_URL = "http://localhost:8080/api/auth";
-      const TAREFA_API_URL = "http://localhost:8080/api/tarefas"; // NOVO: URL base para Tarefas
+      const TAREFA_API_URL = "http://localhost:8080/api/tarefas"; // URL base para Tarefas
 
       let INSTITUICAO_LOGADA = null;
 
@@ -437,7 +444,7 @@
       const selectComunicadoGestor =
         document.getElementById("comunicado-gestor");
 
-      // NOVO: Elementos TAREFA
+      // Elementos TAREFA
       const formCreateTarefa = document.getElementById("form-create-tarefa");
       const selectTarefaGestor = document.getElementById("tarefa-gestor");
 
@@ -572,6 +579,8 @@
 
       async function downloadReportPdf() {
         try {
+          // Note: Este endpoint (/download/pdf) não foi implementado no Backend,
+          // mas a chamada de frontend está aqui por consistência.
           window.open(`${API_URL}/download/pdf`, "_blank");
         } catch (error) {
           showMessage(`Erro ao iniciar download: ${error.message}`, "error");
@@ -663,7 +672,7 @@
         }
       });
 
-      // FUNÇÃO LISTAR GESTORES - ATUALIZADA PARA POPULAR OS TRÊS SELECTS
+      // FUNÇÃO LISTAR GESTORES - ATUALIZADA PARA POPULAR TODOS OS SELECTS
       async function fetchGestores(instituicaoId) {
         listaGestores.innerHTML = "<li>Carregando gestores...</li>";
         selectGestor.innerHTML =
@@ -671,7 +680,7 @@
         selectComunicadoGestor.innerHTML =
           '<option value="">Carregando gestores...</option>';
         selectTarefaGestor.innerHTML =
-          '<option value="">Carregando gestores...</option>'; // NOVO: Inicializa o select de tarefa
+          '<option value="">Carregando gestores...</option>';
 
         try {
           const URL_LISTA_GESTOR = `${API_URL}/${instituicaoId}/gestores`;
@@ -721,14 +730,14 @@
             '<option value="">Selecione o gestor...</option>';
           selectGestor.innerHTML = optionsPadrao;
           selectComunicadoGestor.innerHTML = optionsPadrao;
-          selectTarefaGestor.innerHTML = optionsPadrao; // NOVO: Reset Tarefa
+          selectTarefaGestor.innerHTML = optionsPadrao;
 
           if (gestores.length === 0) {
             const disabledOption =
               '<option value="" disabled>Nenhum gestor cadastrado</option>';
             selectGestor.innerHTML += disabledOption;
             selectComunicadoGestor.innerHTML += disabledOption;
-            selectTarefaGestor.innerHTML += disabledOption; // NOVO: Opção desabilitada Tarefa
+            selectTarefaGestor.innerHTML += disabledOption;
           } else {
             gestores.forEach((g) => {
               const optionText = `${g.nome} (${g.email})`;
@@ -745,7 +754,7 @@
               optionCom.textContent = optionText;
               selectComunicadoGestor.appendChild(optionCom);
 
-              // NOVO: Select Tarefa
+              // Select Tarefa
               const optionTarefa = document.createElement("option");
               optionTarefa.value = g.id;
               optionTarefa.textContent = optionText;
@@ -759,7 +768,7 @@
             '<option value="">Erro ao carregar gestores</option>';
           selectGestor.innerHTML = errorOption;
           selectComunicadoGestor.innerHTML = errorOption;
-          selectTarefaGestor.innerHTML = errorOption; // NOVO: Erro Tarefa
+          selectTarefaGestor.innerHTML = errorOption;
         }
       }
 
@@ -904,6 +913,7 @@
           corpo: corpo,
         };
 
+        // Este endpoint depende da implementação correta do POST no InstituicaoController
         const URL_COMUNICADO = `${API_URL}/${INSTITUICAO_LOGADA.id}/comunicados`;
 
         console.log("📤 Enviando comunicado:", comunicadoDTO);
@@ -922,22 +932,15 @@
             );
           }
 
-          const data = await response.json();
-          showMessage(
-            `Comunicado sobre "${data.assunto}" enviado com sucesso ao gestor!`,
-            "success"
-          );
+          showMessage("Comunicado enviado com sucesso!", "success");
           formSendComunicado.reset();
         } catch (error) {
           console.error("❌ Erro ao enviar comunicado:", error);
-          showMessage(
-            `Erro ao enviar comunicado: ${error.message}. Verifique se o endpoint está ativo.`,
-            "error"
-          );
+          showMessage(`Erro ao enviar comunicado: ${error.message}`, "error");
         }
       });
 
-      // NOVO: FUNÇÃO CRIAR TAREFA
+      // NOVO: FUNÇÃO ATRIBUIR TAREFA
       formCreateTarefa.addEventListener("submit", async (e) => {
         e.preventDefault();
         if (!INSTITUICAO_LOGADA)
@@ -949,24 +952,16 @@
         const descricao = document.getElementById("tarefa-descricao").value;
 
         if (!gestorId)
-          return showMessage(
-            "Selecione um gestor responsável pela tarefa.",
-            "error"
-          );
+          return showMessage("Selecione um gestor responsável.", "error");
 
-        if (!dataLimite)
-          return showMessage("Defina uma data limite para a tarefa.", "error");
-
-        // DTO (Data Transfer Object) para a Tarefa
         const tarefaDTO = {
-          titulo: titulo,
-          descricao: descricao,
           gestorId: gestorId,
-          dataLimite: dataLimite, // Formato yyyy-MM-dd
-          // O instituicaoId virá do Spring no Controller (ou pode ser incluído aqui se o Controller exigir)
+          titulo: titulo,
+          dataLimite: dataLimite,
+          descricao: descricao,
         };
 
-        // Usamos o TAREFA_API_URL pois a rota é simples: POST /api/tarefas
+        // Este endpoint usa a URL base /api/tarefas, conforme corrigido no Controller.
         const URL_TAREFA = TAREFA_API_URL;
 
         console.log("📤 Atribuindo tarefa:", tarefaDTO);
@@ -976,38 +971,88 @@
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              // Se você configurou no backend para receber o ID da Instituição via Header:
+              // O backend espera o ID da instituição no HEADER
               "X-INSTITUICAO-ID": INSTITUICAO_LOGADA.id,
             },
             body: JSON.stringify(tarefaDTO),
           });
 
           if (!response.ok) {
-            const errorText = await response.text();
+            const errorJson = await response.json().catch(() => ({}));
+            const errorText = JSON.stringify(errorJson);
             throw new Error(
               `Falha ao atribuir tarefa: ${errorText || response.statusText}`
             );
           }
 
-          const data = await response.json();
-          showMessage(
-            `Tarefa "${data.titulo}" atribuída com sucesso! (ID: ${data.id})`,
-            "success"
-          );
+          showMessage("Tarefa atribuída com sucesso!", "success");
           formCreateTarefa.reset();
-          // Recarregar a lista de tarefas, se ela existisse
         } catch (error) {
           console.error("❌ Erro ao atribuir tarefa:", error);
-          showMessage(
-            `Erro ao atribuir tarefa: ${error.message}. Verifique o endpoint ${URL_TAREFA}.`,
-            "error"
-          );
+          showMessage(`Erro ao atribuir tarefa: ${error.message}`, "error");
         }
       });
-      // FIM NOVO: FUNÇÃO CRIAR TAREFA
 
-      // --- Inicialização ---
-      changeView("super-admin");
+      // NOVO: FUNÇÃO BAIXAR RELATÓRIO CSV
+      async function downloadTaskReportCsv() {
+        if (!INSTITUICAO_LOGADA || !INSTITUICAO_LOGADA.id) {
+          return showMessage("Faça login da instituição primeiro.", "error");
+        }
+
+        const url = `${TAREFA_API_URL}/download-csv`;
+        const instituicaoId = INSTITUICAO_LOGADA.id;
+
+        try {
+          const response = await fetch(url, {
+            method: "GET",
+            headers: {
+              // O header é crucial para o backend saber de qual instituição buscar os dados
+              "X-INSTITUICAO-ID": instituicaoId,
+            },
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(
+              `Falha ao baixar relatório: ${errorText || response.statusText}`
+            );
+          }
+
+          // Processar a resposta como um blob (arquivo binário)
+          const blob = await response.blob();
+
+          // Cria um URL temporário para o blob e força o download
+          const downloadUrl = window.URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = downloadUrl;
+          a.download = response.headers.get("Content-Disposition")
+            ? response.headers
+                .get("Content-Disposition")
+                .split("filename=")[1]
+                .replace(/"/g, "")
+            : `relatorio_tarefas_${instituicaoId}.csv`;
+
+          document.body.appendChild(a);
+          a.click();
+
+          // Limpeza
+          window.URL.revokeObjectURL(downloadUrl);
+          document.body.removeChild(a);
+
+          showMessage(
+            "Download do relatório CSV iniciado com sucesso!",
+            "success"
+          );
+        } catch (error) {
+          console.error("❌ Erro no download do relatório:", error);
+          showMessage(`Erro ao iniciar download: ${error.message}`, "error");
+        }
+      }
+
+      // Inicializa a visualização
+      document.addEventListener("DOMContentLoaded", () => {
+        changeView("super-admin");
+      });
     </script>
   </body>
 </html>

@@ -3,6 +3,7 @@ package com.example.instituicao.model;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import lombok.AllArgsConstructor;
@@ -26,7 +27,9 @@ public class Tarefa {
     
     
     private String instituicaoId; 
-    private String gestorId;      
+    private String gestorId;
+    @DBRef
+    private Usuarios gestor;
     
     private LocalDate dataLimite;
     private TarefaEnum status; 
