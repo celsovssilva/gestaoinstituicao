@@ -3,6 +3,7 @@ package com.example.instituicao.controller;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.instituicao.dto.ComunicadoRequest;
@@ -129,15 +131,27 @@ public ResponseEntity<Usuarios> cadastrarGestor(
     return usuarioRepository.findByInstituicaoIdAndPapel(instituicaoId, "GESTOR");
 }
 
-    @GetMapping("/download/pdf")
-    public ResponseEntity<byte[]> downloadRelatorio() {
-        byte[] pdfBytes = instituicaoService.criarPdfDasInstituicoes(instituicaoService.listarTodas());
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"relatorio_instituicoes.pdf\"")
-                .contentType(MediaType.APPLICATION_PDF)
-                .body(pdfBytes);
-    }
-
+@GetMapping("download/pdf")
+public ResponseEntity<byte[]> downloadPdf(@RequestParam(value = "t", required = false) String timestamp) {
+    byte[] pdf = instituicaoService.gerarPdfInstituicoes();
+    String nomeArquivo = "instituicoes.pdf";
+    
+    HttpHeaders headers = new HttpHeaders();
+    headers.setContentType(MediaType.APPLICATION_PDF);
+    headers.setContentDisposition(ContentDisposition
+        .attachment()
+        .filename(nomeArquivo)
+        .build());
+ 
+    headers.add("Cache-Control", "no-cache, no-store, must-revalidate");
+    headers.add("Pragma", "no-cache");
+    headers.add("Expires", "0");
+    headers.add("X-Content-Type-Options", "nosniff");
+    
+    return ResponseEntity.ok()
+            .headers(headers)
+            .body(pdf);
+}
     @PostMapping("/{instituicaoId}/comunicados")
     public Comunicado enviarComunicado( @PathVariable String instituicaoId,
         @RequestBody ComunicadoRequest comunicadoDTO) {

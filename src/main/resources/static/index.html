@@ -402,7 +402,7 @@
       // --- Variáveis Globais ---
       const API_URL = "http://localhost:8080/api/instituicoes";
       const AUTH_URL = "http://localhost:8080/api/auth";
-      const TAREFA_API_URL = "http://localhost:8080/api/tarefas"; // URL base para Tarefas
+      const TAREFA_API_URL = "http://localhost:8080/api/tarefas";
 
       let INSTITUICAO_LOGADA = null;
 
@@ -417,11 +417,8 @@
       );
       const authStatusP = document.getElementById("auth-status");
       const logoutBtn = document.getElementById("logout-btn");
-
       const listaInstituicoes = document.getElementById("lista-instituicoes");
       const formCriar = document.getElementById("form-criar");
-
-      // Elementos Instituição Dashboard
       const formInstitutionLogin = document.getElementById(
         "form-institution-login"
       );
@@ -436,15 +433,11 @@
       const listaEscolas = document.getElementById("lista-escolas");
       const totalGestoresSpan = document.getElementById("total-gestores");
       const totalEscolasSpan = document.getElementById("total-escolas");
-
-      // Elementos COMUNICADO
       const formSendComunicado = document.getElementById(
         "form-send-comunicado"
       );
       const selectComunicadoGestor =
         document.getElementById("comunicado-gestor");
-
-      // Elementos TAREFA
       const formCreateTarefa = document.getElementById("form-create-tarefa");
       const selectTarefaGestor = document.getElementById("tarefa-gestor");
 
@@ -540,14 +533,14 @@
             const li = document.createElement("li");
             li.className = "list-group-item";
             li.innerHTML = `
-                      <div>
-                        <strong>${inst.nome}</strong> 
-                        <small>| ID: ${inst.id}</small>
-                      </div>
-                      <div>
-                        <button onclick="deleteInstitution('${inst.id}')" class="delete-btn">Deletar</button>
-                      </div>
-                    `;
+                    <div>
+                      <strong>${inst.nome}</strong> 
+                      <small>| ID: ${inst.id}</small>
+                    </div>
+                    <div>
+                      <button onclick="deleteInstitution('${inst.id}')" class="delete-btn">Deletar</button>
+                    </div>
+                  `;
             listaInstituicoes.appendChild(li);
           });
         } catch (error) {
@@ -577,11 +570,15 @@
         }
       }
 
+      // --- FUNÇÃO ATUALIZADA COM CACHE BUSTER ---
       async function downloadReportPdf() {
         try {
-          // Note: Este endpoint (/download/pdf) não foi implementado no Backend,
-          // mas a chamada de frontend está aqui por consistência.
-          window.open(`${API_URL}/download/pdf`, "_blank");
+          // Geramos um timestamp único para evitar que o navegador use o cache antigo
+          const timestamp = new Date().getTime();
+          const url = `${API_URL}/download/pdf?t=${timestamp}`;
+
+          console.log("Baixando relatório de:", url);
+          window.open(url, "_blank");
         } catch (error) {
           showMessage(`Erro ao iniciar download: ${error.message}`, "error");
         }
@@ -609,8 +606,6 @@
           }
 
           INSTITUICAO_LOGADA = await response.json();
-          console.log("✅ Login bem-sucedido:", INSTITUICAO_LOGADA);
-
           showMessage(
             `Login bem-sucedido! Bem-vindo, ${INSTITUICAO_LOGADA.nome}.`,
             "success"
@@ -628,9 +623,8 @@
         changeView("institution-login");
       }
 
-      // --- 3. DASHBOARD DA INSTITUIÇÃO (Cadastros e Comunicação) ---
+      // --- 3. DASHBOARD DA INSTITUIÇÃO ---
 
-      // FUNÇÃO CRIAR GESTOR
       formCreateGestor.addEventListener("submit", async (e) => {
         e.preventDefault();
         if (!INSTITUICAO_LOGADA)
@@ -642,230 +636,88 @@
           senha_hash: document.getElementById("gestor-senha").value,
         };
 
-        console.log("📤 Cadastrando gestor:", gestorData);
-
-        const URL_CADASTRO_GESTOR = `${API_URL}/${INSTITUICAO_LOGADA.id}/gestores`;
-
         try {
-          const response = await fetch(URL_CADASTRO_GESTOR, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(gestorData),
-          });
+          const response = await fetch(
+            `${API_URL}/${INSTITUICAO_LOGADA.id}/gestores`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(gestorData),
+            }
+          );
 
-          if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(
-              `Falha ao criar Gestor: ${errorText || response.statusText}`
-            );
-          }
-
+          if (!response.ok) throw new Error("Falha ao criar Gestor.");
           const data = await response.json();
-          console.log("✅ Gestor criado:", data);
-
           showMessage(`Gestor "${data.nome}" criado com sucesso!`, "success");
           formCreateGestor.reset();
           fetchGestores(INSTITUICAO_LOGADA.id);
         } catch (error) {
-          console.error("💥 Erro:", error);
           showMessage(`Erro ao criar gestor: ${error.message}`, "error");
         }
       });
 
-      // FUNÇÃO LISTAR GESTORES - ATUALIZADA PARA POPULAR TODOS OS SELECTS
       async function fetchGestores(instituicaoId) {
-        listaGestores.innerHTML = "<li>Carregando gestores...</li>";
-        selectGestor.innerHTML =
-          '<option value="">Carregando gestores...</option>';
-        selectComunicadoGestor.innerHTML =
-          '<option value="">Carregando gestores...</option>';
-        selectTarefaGestor.innerHTML =
-          '<option value="">Carregando gestores...</option>';
-
         try {
-          const URL_LISTA_GESTOR = `${API_URL}/${instituicaoId}/gestores`;
-          console.log("🔍 Buscando gestores em:", URL_LISTA_GESTOR);
-
-          const response = await fetch(URL_LISTA_GESTOR);
-
-          if (!response.ok) {
-            if (response.status === 405) {
-              throw new Error(
-                "Endpoint de listagem de gestores não implementado no backend"
-              );
-            }
-            throw new Error(`Erro ${response.status}: ${response.statusText}`);
-          }
-
+          const response = await fetch(`${API_URL}/${instituicaoId}/gestores`);
           const gestores = await response.json();
-          console.log("✅ Gestores carregados:", gestores);
-
-          // Atualizar contador
           totalGestoresSpan.textContent = gestores.length;
-
-          // Atualizar lista de gestores
           listaGestores.innerHTML = "";
-          if (gestores.length === 0) {
-            listaGestores.innerHTML =
-              "<li>Nenhum gestor cadastrado. Cadastre o primeiro gestor acima.</li>";
-          } else {
-            gestores.forEach((g) => {
-              const li = document.createElement("li");
-              li.className = "list-group-item";
-              li.innerHTML = `
-                <div>
-                  <strong>${g.nome}</strong><br>
-                  <small class="gestor-info">📧 ${g.email} | 🆔 ${g.id}</small>
-                </div>
-                <div>
-                  <button onclick="deleteGestor('${instituicaoId}', '${g.id}')" class="delete-btn">Deletar</button>
-                </div>
-              `;
-              listaGestores.appendChild(li);
-            });
-          }
 
-          // Resetar e popular todos os selects
-          const optionsPadrao =
-            '<option value="">Selecione o gestor...</option>';
-          selectGestor.innerHTML = optionsPadrao;
-          selectComunicadoGestor.innerHTML = optionsPadrao;
-          selectTarefaGestor.innerHTML = optionsPadrao;
+          // Popular Selects
+          const options =
+            '<option value="">Selecione o gestor...</option>' +
+            gestores
+              .map(
+                (g) => `<option value="${g.id}">${g.nome} (${g.email})</option>`
+              )
+              .join("");
 
-          if (gestores.length === 0) {
-            const disabledOption =
-              '<option value="" disabled>Nenhum gestor cadastrado</option>';
-            selectGestor.innerHTML += disabledOption;
-            selectComunicadoGestor.innerHTML += disabledOption;
-            selectTarefaGestor.innerHTML += disabledOption;
-          } else {
-            gestores.forEach((g) => {
-              const optionText = `${g.nome} (${g.email})`;
+          selectGestor.innerHTML = options;
+          selectComunicadoGestor.innerHTML = options;
+          selectTarefaGestor.innerHTML = options;
 
-              // Select Escola
-              const optionSchool = document.createElement("option");
-              optionSchool.value = g.id;
-              optionSchool.textContent = optionText;
-              selectGestor.appendChild(optionSchool);
-
-              // Select Comunicado
-              const optionCom = document.createElement("option");
-              optionCom.value = g.id;
-              optionCom.textContent = optionText;
-              selectComunicadoGestor.appendChild(optionCom);
-
-              // Select Tarefa
-              const optionTarefa = document.createElement("option");
-              optionTarefa.value = g.id;
-              optionTarefa.textContent = optionText;
-              selectTarefaGestor.appendChild(optionTarefa);
-            });
-          }
+          gestores.forEach((g) => {
+            const li = document.createElement("li");
+            li.className = "list-group-item";
+            li.innerHTML = `<div><strong>${g.nome}</strong><br><small>📧 ${g.email}</small></div>
+                            <button onclick="deleteGestor('${instituicaoId}', '${g.id}')" class="delete-btn">Deletar</button>`;
+            listaGestores.appendChild(li);
+          });
         } catch (error) {
-          console.error("❌ Erro ao carregar gestores:", error);
-          listaGestores.innerHTML = `<li class="error">${error.message}</li>`;
-          const errorOption =
-            '<option value="">Erro ao carregar gestores</option>';
-          selectGestor.innerHTML = errorOption;
-          selectComunicadoGestor.innerHTML = errorOption;
-          selectTarefaGestor.innerHTML = errorOption;
+          listaGestores.innerHTML = "<li>Erro ao carregar gestores.</li>";
         }
       }
 
-      // FUNÇÃO DELETAR GESTOR
-      async function deleteGestor(instituicaoId, gestorId) {
-        if (!window.confirm(`Tem certeza que deseja deletar este gestor?`))
-          return;
-
-        try {
-          const response = await fetch(
-            `${API_URL}/${instituicaoId}/gestores/${gestorId}`,
-            {
-              method: "DELETE",
-            }
-          );
-
-          if (response.status === 204) {
-            showMessage(`Gestor deletado com sucesso!`, "success");
-            fetchGestores(instituicaoId);
-          } else {
-            throw new Error(`Erro ao deletar: Status ${response.status}`);
-          }
-        } catch (error) {
-          showMessage(`Erro ao deletar gestor: ${error.message}`, "error");
-        }
-      }
-
-      // FUNÇÃO LISTAR ESCOLAS
       async function fetchSchools(instituicaoId) {
-        listaEscolas.innerHTML = "<li>Carregando escolas...</li>";
         try {
-          const url = `${API_URL}/${instituicaoId}/escolas`;
-          const response = await fetch(url);
-
-          if (!response.ok) {
-            if (response.status === 405) {
-              throw new Error(
-                "Endpoint de listagem de escolas não implementado no backend"
-              );
-            }
-            throw new Error(`Erro ${response.status}: ${response.statusText}`);
-          }
-
+          const response = await fetch(`${API_URL}/${instituicaoId}/escolas`);
           const escolas = await response.json();
-
-          // Atualizar contador
           totalEscolasSpan.textContent = escolas.length;
-
           listaEscolas.innerHTML = "";
-          if (escolas.length === 0) {
-            listaEscolas.innerHTML = "<li>Nenhuma escola cadastrada.</li>";
-          } else {
-            escolas.forEach((e) => {
-              const li = document.createElement("li");
-              li.className = "school-item";
-              li.innerHTML = `
-                <strong>${e.nome}</strong><br>
-                <small>📍 ${e.cidade} | 👥 ${e.numeroDeAlunos} alunos</small>
-                ${
-                  e.gestorId
-                    ? `<br><small>👨‍💼 Gestor ID: ${e.gestorId}</small>`
-                    : ""
-                }
-              `;
-              listaEscolas.appendChild(li);
-            });
-          }
+          escolas.forEach((e) => {
+            const li = document.createElement("li");
+            li.className = "school-item";
+            li.innerHTML = `<strong>${e.nome}</strong><br><small>📍 ${e.cidade} | 👥 ${e.numeroDeAlunos} alunos</small>`;
+            listaEscolas.appendChild(li);
+          });
         } catch (error) {
-          console.error("❌ Erro ao carregar escolas:", error);
-          listaEscolas.innerHTML = `<li class="error">${error.message}</li>`;
+          listaEscolas.innerHTML = "<li>Erro ao carregar escolas.</li>";
         }
       }
 
-      // FUNÇÃO ADICIONAR ESCOLA
       formAddSchool.addEventListener("submit", async (e) => {
         e.preventDefault();
-        if (!INSTITUICAO_LOGADA)
-          return showMessage("Faça login primeiro.", "error");
-
         const gestorId = selectGestor.value;
-        if (!gestorId)
-          return showMessage("Selecione um gestor responsável.", "error");
-
-        const novaEscola = {
-          nome: document.getElementById("school-nome").value,
-          cidade: document.getElementById("school-cidade").value,
-          numeroDeAlunos: parseInt(
-            document.getElementById("school-alunos").value
-          ),
-        };
-
         const escolaRequestDTO = {
-          escola: novaEscola,
+          escola: {
+            nome: document.getElementById("school-nome").value,
+            cidade: document.getElementById("school-cidade").value,
+            numeroDeAlunos: parseInt(
+              document.getElementById("school-alunos").value
+            ),
+          },
           gestorId: gestorId,
         };
-
-        console.log("📤 Cadastrando escola:", escolaRequestDTO);
 
         try {
           const response = await fetch(
@@ -876,183 +728,17 @@
               body: JSON.stringify(escolaRequestDTO),
             }
           );
-
-          if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Falha ao cadastrar escola: ${errorText}`);
-          }
-
-          showMessage(
-            `Escola "${novaEscola.nome}" cadastrada com sucesso!`,
-            "success"
-          );
+          if (!response.ok) throw new Error("Erro ao cadastrar escola");
+          showMessage("Escola cadastrada!", "success");
           formAddSchool.reset();
           fetchSchools(INSTITUICAO_LOGADA.id);
         } catch (error) {
-          console.error("❌ Erro ao cadastrar escola:", error);
-          showMessage(`Erro ao cadastrar escola: ${error.message}`, "error");
+          showMessage(error.message, "error");
         }
       });
 
-      // FUNÇÃO ENVIAR COMUNICADO
-      formSendComunicado.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        if (!INSTITUICAO_LOGADA)
-          return showMessage("Faça login primeiro.", "error");
-
-        const gestorId = selectComunicadoGestor.value;
-        const assunto = document.getElementById("comunicado-assunto").value;
-        const corpo = document.getElementById("comunicado-corpo").value;
-
-        if (!gestorId)
-          return showMessage("Selecione um gestor destinatário.", "error");
-
-        const comunicadoDTO = {
-          gestorId: gestorId,
-          assunto: assunto,
-          corpo: corpo,
-        };
-
-        // Este endpoint depende da implementação correta do POST no InstituicaoController
-        const URL_COMUNICADO = `${API_URL}/${INSTITUICAO_LOGADA.id}/comunicados`;
-
-        console.log("📤 Enviando comunicado:", comunicadoDTO);
-
-        try {
-          const response = await fetch(URL_COMUNICADO, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(comunicadoDTO),
-          });
-
-          if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(
-              `Falha ao enviar comunicado: ${errorText || response.statusText}`
-            );
-          }
-
-          showMessage("Comunicado enviado com sucesso!", "success");
-          formSendComunicado.reset();
-        } catch (error) {
-          console.error("❌ Erro ao enviar comunicado:", error);
-          showMessage(`Erro ao enviar comunicado: ${error.message}`, "error");
-        }
-      });
-
-      // NOVO: FUNÇÃO ATRIBUIR TAREFA
-      formCreateTarefa.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        if (!INSTITUICAO_LOGADA)
-          return showMessage("Faça login primeiro.", "error");
-
-        const gestorId = selectTarefaGestor.value;
-        const titulo = document.getElementById("tarefa-titulo").value;
-        const dataLimite = document.getElementById("tarefa-data-limite").value;
-        const descricao = document.getElementById("tarefa-descricao").value;
-
-        if (!gestorId)
-          return showMessage("Selecione um gestor responsável.", "error");
-
-        const tarefaDTO = {
-          gestorId: gestorId,
-          titulo: titulo,
-          dataLimite: dataLimite,
-          descricao: descricao,
-        };
-
-        // Este endpoint usa a URL base /api/tarefas, conforme corrigido no Controller.
-        const URL_TAREFA = TAREFA_API_URL;
-
-        console.log("📤 Atribuindo tarefa:", tarefaDTO);
-
-        try {
-          const response = await fetch(URL_TAREFA, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              // O backend espera o ID da instituição no HEADER
-              "X-INSTITUICAO-ID": INSTITUICAO_LOGADA.id,
-            },
-            body: JSON.stringify(tarefaDTO),
-          });
-
-          if (!response.ok) {
-            const errorJson = await response.json().catch(() => ({}));
-            const errorText = JSON.stringify(errorJson);
-            throw new Error(
-              `Falha ao atribuir tarefa: ${errorText || response.statusText}`
-            );
-          }
-
-          showMessage("Tarefa atribuída com sucesso!", "success");
-          formCreateTarefa.reset();
-        } catch (error) {
-          console.error("❌ Erro ao atribuir tarefa:", error);
-          showMessage(`Erro ao atribuir tarefa: ${error.message}`, "error");
-        }
-      });
-
-      // NOVO: FUNÇÃO BAIXAR RELATÓRIO CSV
-      async function downloadTaskReportCsv() {
-        if (!INSTITUICAO_LOGADA || !INSTITUICAO_LOGADA.id) {
-          return showMessage("Faça login da instituição primeiro.", "error");
-        }
-
-        const url = `${TAREFA_API_URL}/download-csv`;
-        const instituicaoId = INSTITUICAO_LOGADA.id;
-
-        try {
-          const response = await fetch(url, {
-            method: "GET",
-            headers: {
-              // O header é crucial para o backend saber de qual instituição buscar os dados
-              "X-INSTITUICAO-ID": instituicaoId,
-            },
-          });
-
-          if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(
-              `Falha ao baixar relatório: ${errorText || response.statusText}`
-            );
-          }
-
-          // Processar a resposta como um blob (arquivo binário)
-          const blob = await response.blob();
-
-          // Cria um URL temporário para o blob e força o download
-          const downloadUrl = window.URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = downloadUrl;
-          a.download = response.headers.get("Content-Disposition")
-            ? response.headers
-                .get("Content-Disposition")
-                .split("filename=")[1]
-                .replace(/"/g, "")
-            : `relatorio_tarefas_${instituicaoId}.csv`;
-
-          document.body.appendChild(a);
-          a.click();
-
-          // Limpeza
-          window.URL.revokeObjectURL(downloadUrl);
-          document.body.removeChild(a);
-
-          showMessage(
-            "Download do relatório CSV iniciado com sucesso!",
-            "success"
-          );
-        } catch (error) {
-          console.error("❌ Erro no download do relatório:", error);
-          showMessage(`Erro ao iniciar download: ${error.message}`, "error");
-        }
-      }
-
-      // Inicializa a visualização
-      document.addEventListener("DOMContentLoaded", () => {
-        changeView("super-admin");
-      });
+      // Inicialização
+      fetchInstitutions();
     </script>
   </body>
 </html>

@@ -1,8 +1,10 @@
 package com.example.instituicao.service;
 
 import java.io.ByteArrayOutputStream;
+import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,11 +21,17 @@ import com.example.instituicao.repository.ComunicadoRepository;
 import com.example.instituicao.repository.InstituicaoRepository;
 import com.example.instituicao.repository.UnidadesEscolaresRepository;
 import com.example.instituicao.repository.UsuariosRepository;
+import com.itextpdf.kernel.colors.ColorConstants;
+import com.itextpdf.kernel.geom.PageSize;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfWriter;
 import com.itextpdf.layout.Document;
+import com.itextpdf.layout.element.AreaBreak;
+import com.itextpdf.layout.element.Cell;
 import com.itextpdf.layout.element.Paragraph;
 import com.itextpdf.layout.element.Table;
+import com.itextpdf.layout.properties.AreaBreakType;
+import com.itextpdf.layout.properties.TextAlignment;
 import com.itextpdf.layout.properties.UnitValue;
 
 
@@ -41,6 +49,7 @@ public class InstituicaoService {
 
     @Autowired
     private ComunicadoRepository comunicadoRepository;
+
 
     public Instituicao autenticarInstituicao(String nome, String senha) {
 
@@ -179,65 +188,144 @@ public Usuarios buscarGestorPorId(String gestorId) {
 
 
 
-    public byte[] criarPdfDasInstituicoes(List<Instituicao> instituicoes) {
-
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-
-        try (
-
-                PdfWriter writer = new PdfWriter(baos);
-
-                PdfDocument pdf = new PdfDocument(writer);
-
-                Document document = new Document(pdf)) {
-
-            document.add(new Paragraph("Relatório Geral de Instituições").setFontSize(18).setBold());
-            document.add(new Paragraph("Total de Instituições: " + instituicoes.size()));
-            document.add(new Paragraph("\n"));
-
-            for (Instituicao inst : instituicoes) {
-
-                document.add(new Paragraph("======================================="));
-                document.add(new Paragraph("Instituição: " + inst.getNome())
-                        .setFontSize(14).setBold());
-
-                document.add(new Paragraph(" "));
-
-                document.add(new Paragraph("Escolas Cadastradas:")
-                        .setItalic());
-
-                Table table = new Table(UnitValue.createPercentArray(new float[] { 1, 3, 2, 2 }));
-                table.setWidth(UnitValue.createPercentValue(95));
-
-                table.addHeaderCell(new Paragraph("Nome da Escola").setBold());
-                table.addHeaderCell(new Paragraph("Endereço").setBold());
-                table.addHeaderCell(new Paragraph("Cidade").setBold()); // Novo Cabeçalho
-                table.addHeaderCell(new Paragraph("CEP").setBold()); // Novo Cabeçalho
-
-                if (inst.getEscolas() != null && !inst.getEscolas().isEmpty()) {
-                    inst.getEscolas().forEach(escola -> {
-
-                        table.addCell(escola.getNome());
-                        table.addCell(escola.getEndereco());
-                        table.addCell(escola.getCidade() != null ? escola.getCidade() : "N/A");
-                        table.addCell(escola.getCep() != null ? escola.getCep() : "N/A");
-
-                    });
-                } else {
-
-                }
-                document.add(table);
-                document.add(new Paragraph("\n"));
-            }
-
-        } catch (Exception e) {
-
-            System.err.println("Erro ao gerar PDF: " + e.getMessage());
-            e.printStackTrace();
+     public byte[] gerarPdfInstituicoes() {
+    // Buscar todas instituições com escolas carregadas
+    List<Instituicao> instituicoes = instituicaoRepository.findAll(); 
+    
+    // Forçar inicialização das coleções se necessário
+    for (Instituicao inst : instituicoes) {
+        if (inst.getEscolas() != null) {
+            inst.getEscolas().size(); // Forçar carregamento se for LAZY
         }
-
-        return baos.toByteArray();
     }
+    
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    
+    try (PdfWriter writer = new PdfWriter(baos);
+         PdfDocument pdf = new PdfDocument(writer);
+         Document document = new Document(pdf, PageSize.A4)) {
+        
+        // Configurar margens
+        document.setMargins(20, 20, 20, 20);
+        
+        // Título
+        Paragraph titulo = new Paragraph("Relatório Geral de Instituições")
+                .setFontSize(18)
+                .setBold()
+                .setTextAlignment(TextAlignment.CENTER);
+        document.add(titulo);
+        
+        document.add(new Paragraph(" ")); // Espaço
+        
+        // Data de geração
+        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
+        String dataGeracao = sdf.format(new Date());
+        document.add(new Paragraph("Gerado em: " + dataGeracao)
+                .setFontSize(10)
+                .setFontColor(ColorConstants.GRAY));
+        
+        document.add(new Paragraph("Total de Instituições: " + instituicoes.size())
+                .setBold());
+        
+        document.add(new Paragraph("\n"));
+        
+        int totalEscolas = 0;
+        
+        // Para cada instituição
+        for (int i = 0; i < instituicoes.size(); i++) {
+            Instituicao inst = instituicoes.get(i);
+            
+            // Adicionar linha separadora
+            if (i > 0) {
+                document.add(new Paragraph(" "));
+            }
+            
+            // Nome da instituição
+            Paragraph nomeInstituicao = new Paragraph((i + 1) + ". " + inst.getNome())
+                    .setFontSize(14)
+                    .setBold()
+                    .setFontColor(ColorConstants.BLUE);
+            document.add(nomeInstituicao);
+            
+            // ID da instituição
+            if (inst.getId() != null) {
+                document.add(new Paragraph("ID: " + inst.getId())
+                        .setFontSize(10)
+                        .setFontColor(ColorConstants.DARK_GRAY));
+            }
+            
+            document.add(new Paragraph(" "));
+            
+            // Verificar se tem escolas
+            List<UnidadesEscolares> escolas = inst.getEscolas();
+            
+            if (escolas != null && !escolas.isEmpty()) {
+                totalEscolas += escolas.size();
+                
+                Paragraph subtitulo = new Paragraph("Escolas Cadastradas (" + escolas.size() + "):")
+                        .setFontSize(12)
+                        .setBold()
+                        .setItalic();
+                document.add(subtitulo);
+                
+                document.add(new Paragraph(" "));
+                
+                // Criar tabela para escolas
+                Table table = new Table(UnitValue.createPercentArray(new float[]{1, 3, 2, 2}));
+                table.setWidth(UnitValue.createPercentValue(100));
+                table.setMarginBottom(10);
+                
+                // Cabeçalho
+                table.addHeaderCell(new Cell().add(new Paragraph("Nome").setBold()));
+                table.addHeaderCell(new Cell().add(new Paragraph("Endereço").setBold()));
+                table.addHeaderCell(new Cell().add(new Paragraph("Cidade").setBold()));
+                table.addHeaderCell(new Cell().add(new Paragraph("CEP").setBold()));
+                
+                // Adicionar escolas
+                for (UnidadesEscolares escola : escolas) {
+                    table.addCell(new Cell().add(new Paragraph(escola.getNome() != null ? escola.getNome() : "")));
+                    table.addCell(new Cell().add(new Paragraph(escola.getEndereco() != null ? escola.getEndereco() : "")));
+                    table.addCell(new Cell().add(new Paragraph(escola.getCidade() != null ? escola.getCidade() : "N/A")));
+                    table.addCell(new Cell().add(new Paragraph(escola.getCep() != null ? escola.getCep() : "N/A")));
+                }
+                
+                document.add(table);
+            } else {
+                document.add(new Paragraph("Nenhuma escola cadastrada")
+                        .setFontColor(ColorConstants.RED)
+                        .setItalic());
+            }
+            
+            // Adicionar quebra de página após 3 instituições
+            if ((i + 1) % 3 == 0 && i < instituicoes.size() - 1) {
+                document.add(new AreaBreak(AreaBreakType.NEXT_PAGE));
+            }
+        }
+        
+        // Resumo no final
+        document.add(new Paragraph("\n"));
+        document.add(new Paragraph("=".repeat(50))
+                .setTextAlignment(TextAlignment.CENTER));
+        
+        Paragraph resumo = new Paragraph("RESUMO GERAL")
+                .setFontSize(12)
+                .setBold()
+                .setTextAlignment(TextAlignment.CENTER);
+        document.add(resumo);
+        
+        document.add(new Paragraph("Total de Instituições: " + instituicoes.size())
+                .setTextAlignment(TextAlignment.CENTER));
+        document.add(new Paragraph("Total de Escolas: " + totalEscolas)
+                .setTextAlignment(TextAlignment.CENTER));
+        
+    } catch (Exception e) {
+        e.printStackTrace();
+        throw new RuntimeException("Erro ao gerar PDF: " + e.getMessage(), e);
+    }
+    
+    return baos.toByteArray();
+}
+
 
     public Comunicado enviarComunicado(@PathVariable String instituicaoId, ComunicadoRequest comunicadoDTO) {
       
