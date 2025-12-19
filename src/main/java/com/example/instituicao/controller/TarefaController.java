@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -48,24 +49,31 @@ public class TarefaController {
         return tarefaService.concluirTarefa(id);
     }
 
-@GetMapping("/download-csv")
-    public ResponseEntity<byte[]> exportarTarefasParaPdf() {
-        
-        List<Tarefa> listaDeTarefas = tarefaService.buscarTarefasPorGestor("all");
+@GetMapping("/download/pdf")
+public ResponseEntity<byte[]> exportarTarefasParaPdf(
+        @RequestParam(required = false) String instituicaoId) { // ← RECEBE O PARÂMETRO
+    
+    List<Tarefa> listaDeTarefas;
+    
+    if (instituicaoId != null && !instituicaoId.equals("all")) {
 
-       
-        byte[] pdfBytes = tarefaService.criarPdfDasTarefas(listaDeTarefas);
-
+        listaDeTarefas = tarefaService.buscarTarefasPorInstituicao(instituicaoId);
+        System.out.println("Buscando tarefas para instituição: " + instituicaoId);
+    } else {
         
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_PDF);
-        
-      
-        headers.setContentDispositionFormData("attachment", "relatorio_tarefas.pdf");
-
-       
-        return new ResponseEntity<>(pdfBytes, headers, HttpStatus.OK);
+        listaDeTarefas = tarefaService.buscarTarefasPorGestor("all");
+        System.out.println("Buscando TODAS as tarefas");
     }
     
+    System.out.println("Total de tarefas encontradas: " + listaDeTarefas.size());
+    
+    byte[] pdfBytes = tarefaService.criarPdfDasTarefas(listaDeTarefas);
+
+    HttpHeaders headers = new HttpHeaders();
+    headers.setContentType(MediaType.APPLICATION_PDF);
+    headers.setContentDispositionFormData("attachment", "relatorio_tarefas.pdf");
+
+    return new ResponseEntity<>(pdfBytes, headers, HttpStatus.OK);
+}
     
 }

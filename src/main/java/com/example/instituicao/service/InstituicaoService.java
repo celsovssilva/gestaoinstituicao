@@ -189,13 +189,13 @@ public Usuarios buscarGestorPorId(String gestorId) {
 
 
      public byte[] gerarPdfInstituicoes() {
-    // Buscar todas instituições com escolas carregadas
+  
     List<Instituicao> instituicoes = instituicaoRepository.findAll(); 
     
-    // Forçar inicialização das coleções se necessário
+   
     for (Instituicao inst : instituicoes) {
         if (inst.getEscolas() != null) {
-            inst.getEscolas().size(); // Forçar carregamento se for LAZY
+            inst.getEscolas().size(); 
         }
     }
     
@@ -205,19 +205,18 @@ public Usuarios buscarGestorPorId(String gestorId) {
          PdfDocument pdf = new PdfDocument(writer);
          Document document = new Document(pdf, PageSize.A4)) {
         
-        // Configurar margens
         document.setMargins(20, 20, 20, 20);
         
-        // Título
+   
         Paragraph titulo = new Paragraph("Relatório Geral de Instituições")
                 .setFontSize(18)
                 .setBold()
                 .setTextAlignment(TextAlignment.CENTER);
         document.add(titulo);
         
-        document.add(new Paragraph(" ")); // Espaço
+        document.add(new Paragraph(" ")); 
         
-        // Data de geração
+       
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
         String dataGeracao = sdf.format(new Date());
         document.add(new Paragraph("Gerado em: " + dataGeracao)
@@ -231,23 +230,23 @@ public Usuarios buscarGestorPorId(String gestorId) {
         
         int totalEscolas = 0;
         
-        // Para cada instituição
+        
         for (int i = 0; i < instituicoes.size(); i++) {
             Instituicao inst = instituicoes.get(i);
             
-            // Adicionar linha separadora
+       
             if (i > 0) {
                 document.add(new Paragraph(" "));
             }
             
-            // Nome da instituição
+          
             Paragraph nomeInstituicao = new Paragraph((i + 1) + ". " + inst.getNome())
                     .setFontSize(14)
                     .setBold()
                     .setFontColor(ColorConstants.BLUE);
             document.add(nomeInstituicao);
             
-            // ID da instituição
+          
             if (inst.getId() != null) {
                 document.add(new Paragraph("ID: " + inst.getId())
                         .setFontSize(10)
@@ -256,7 +255,7 @@ public Usuarios buscarGestorPorId(String gestorId) {
             
             document.add(new Paragraph(" "));
             
-            // Verificar se tem escolas
+          
             List<UnidadesEscolares> escolas = inst.getEscolas();
             
             if (escolas != null && !escolas.isEmpty()) {
@@ -270,18 +269,16 @@ public Usuarios buscarGestorPorId(String gestorId) {
                 
                 document.add(new Paragraph(" "));
                 
-                // Criar tabela para escolas
+               
                 Table table = new Table(UnitValue.createPercentArray(new float[]{1, 3, 2, 2}));
                 table.setWidth(UnitValue.createPercentValue(100));
                 table.setMarginBottom(10);
-                
-                // Cabeçalho
+     
                 table.addHeaderCell(new Cell().add(new Paragraph("Nome").setBold()));
                 table.addHeaderCell(new Cell().add(new Paragraph("Endereço").setBold()));
                 table.addHeaderCell(new Cell().add(new Paragraph("Cidade").setBold()));
                 table.addHeaderCell(new Cell().add(new Paragraph("CEP").setBold()));
-                
-                // Adicionar escolas
+              
                 for (UnidadesEscolares escola : escolas) {
                     table.addCell(new Cell().add(new Paragraph(escola.getNome() != null ? escola.getNome() : "")));
                     table.addCell(new Cell().add(new Paragraph(escola.getEndereco() != null ? escola.getEndereco() : "")));
@@ -296,13 +293,13 @@ public Usuarios buscarGestorPorId(String gestorId) {
                         .setItalic());
             }
             
-            // Adicionar quebra de página após 3 instituições
+           
             if ((i + 1) % 3 == 0 && i < instituicoes.size() - 1) {
                 document.add(new AreaBreak(AreaBreakType.NEXT_PAGE));
             }
         }
         
-        // Resumo no final
+      
         document.add(new Paragraph("\n"));
         document.add(new Paragraph("=".repeat(50))
                 .setTextAlignment(TextAlignment.CENTER));

@@ -28,6 +28,7 @@ public class Tarefa {
     
     private String instituicaoId; 
     private String gestorId;
+    
     @DBRef
     private Usuarios gestor;
     

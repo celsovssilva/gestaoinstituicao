@@ -353,7 +353,7 @@
             class="pdf-btn"
             style="margin-bottom: 15px"
           >
-            ⬇️ Baixar Relatório (CSV)
+            ⬇️ Baixar Relatório (PDF)
           </button>
           <p style="color: #666">
             Esta área exibe as tarefas pendentes, concluídas e atrasadas por
@@ -581,6 +581,39 @@
           window.open(url, "_blank");
         } catch (error) {
           showMessage(`Erro ao iniciar download: ${error.message}`, "error");
+        }
+      }
+
+      // --- FUNÇÃO PARA BAIXAR RELATÓRIO DE TAREFAS (PDF) ---
+      async function downloadTaskReportCsv() {
+        try {
+          if (!INSTITUICAO_LOGADA) {
+            showMessage("Faça login na instituição primeiro.", "error");
+            return;
+          }
+
+          // Adiciona timestamp para evitar cache
+          const timestamp = new Date().getTime();
+
+          // ✅ CORREÇÃO: Usar o endpoint de TAREFAS
+          const url = `${TAREFA_API_URL}/download/pdf?instituicaoId=${INSTITUICAO_LOGADA.id}&t=${timestamp}`;
+
+          console.log(
+            "📤 Baixando relatório de TAREFAS para instituição:",
+            INSTITUICAO_LOGADA.id
+          );
+          console.log("🌐 URL:", url);
+
+          // Abre em nova aba para download
+          window.open(url, "_blank");
+
+          showMessage(
+            `Baixando relatório de TAREFAS da instituição ${INSTITUICAO_LOGADA.nome}...`,
+            "success"
+          );
+        } catch (error) {
+          showMessage(`Erro ao baixar relatório: ${error.message}`, "error");
+          console.error("Erro detalhado:", error);
         }
       }
 

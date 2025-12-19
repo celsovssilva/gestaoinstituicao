@@ -10,7 +10,6 @@ import com.example.instituicao.dto.TarefaRequest;
 import com.example.instituicao.model.Tarefa;
 import com.example.instituicao.model.TarefaEnum;
 import com.example.instituicao.repository.TarefaRepository;
-import com.example.instituicao.repository.UsuariosRepository;
 import com.itextpdf.io.source.ByteArrayOutputStream;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfWriter;
@@ -24,9 +23,7 @@ public class TarefaService {
     
     @Autowired
     private TarefaRepository tarefaRepository;
-    @Autowired
-    private UsuariosRepository gestorRepository;
-
+    
     
     public Tarefa criarTarefa(String instituicaoId, TarefaRequest request) {
         Tarefa novaTarefa = new Tarefa();
@@ -47,10 +44,13 @@ public class TarefaService {
 
    
     public List<Tarefa> buscarTarefasPorGestor(String gestorId) {
-        
+
         return tarefaRepository.findByGestorId(gestorId);
     }
     
+    public List<Tarefa> buscarTarefasPorInstituicao(String instituicaoId) {
+        return tarefaRepository.findByInstituicaoId(instituicaoId);
+    }
     
     public Tarefa concluirTarefa(String tarefaId) {
         Tarefa tarefa = tarefaRepository.findById(tarefaId)
@@ -62,8 +62,10 @@ public class TarefaService {
         return tarefaRepository.save(tarefa);
     }
     
- public byte[] criarPdfDasTarefas(List<Tarefa> tarefas) {
-    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    public byte[] criarPdfDasTarefas(List<Tarefa> tarefas) {
+    
+     ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    
 
     try (
             PdfWriter writer = new PdfWriter(baos);
