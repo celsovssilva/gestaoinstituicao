@@ -3,6 +3,7 @@ package com.example.instituicao.model;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -21,6 +22,7 @@ import lombok.Setter;
 @Setter
 public class Tarefa {
   
+    @Id
     private String id;
     private String titulo;
     private String descricao;
@@ -28,7 +30,7 @@ public class Tarefa {
     
     private String instituicaoId; 
     private String gestorId;
-    
+
     @DBRef
     private Usuarios gestor;
     

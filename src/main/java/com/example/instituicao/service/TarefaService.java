@@ -5,11 +5,14 @@ import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.example.instituicao.dto.TarefaRequest;
 import com.example.instituicao.model.Tarefa;
 import com.example.instituicao.model.TarefaEnum;
+import com.example.instituicao.model.Usuarios;
 import com.example.instituicao.repository.TarefaRepository;
+import com.example.instituicao.repository.UsuariosRepository;
 import com.itextpdf.io.source.ByteArrayOutputStream;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfWriter;
@@ -24,7 +27,10 @@ public class TarefaService {
     @Autowired
     private TarefaRepository tarefaRepository;
     
+    @Autowired
+    private UsuariosRepository usuarioRepository;
     
+    @Transactional
     public Tarefa criarTarefa(String instituicaoId, TarefaRequest request) {
         Tarefa novaTarefa = new Tarefa();
     
@@ -32,7 +38,14 @@ public class TarefaService {
     novaTarefa.setInstituicaoId(instituicaoId);
     
     
-    novaTarefa.setGestorId(request.getGestorId()); 
+    novaTarefa.setGestorId(request.getGestorId());
+    if (request.getGestorId() != null) {
+        Usuarios gestorEncontrado = usuarioRepository.findById(request.getGestorId())
+            .orElseThrow(() -> new RuntimeException("Gestor não encontrado com o ID: " + request.getGestorId()));
+            
+       
+        novaTarefa.setGestor(gestorEncontrado);
+    }
     novaTarefa.setTitulo(request.getTitulo());     
     novaTarefa.setDescricao(request.getDescricao());
     novaTarefa.setDataLimite(request.getDataLimite());

@@ -721,6 +721,55 @@
         }
       }
 
+      // --- NOVA IMPLEMENTAÇÃO: Criar Tarefa ---
+      formCreateTarefa.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        if (!INSTITUICAO_LOGADA) {
+          showMessage("Faça login na instituição primeiro.", "error");
+          return;
+        }
+
+        const tarefaData = {
+          titulo: document.getElementById("tarefa-titulo").value,
+          descricao: document.getElementById("tarefa-descricao").value,
+          dataLimite: document.getElementById("tarefa-data-limite").value,
+          gestorId: selectTarefaGestor.value,
+          instituicaoId: INSTITUICAO_LOGADA.id,
+        };
+
+        // Validação simples
+        if (
+          !tarefaData.titulo ||
+          !tarefaData.descricao ||
+          !tarefaData.dataLimite ||
+          !tarefaData.gestorId
+        ) {
+          showMessage("Preencha todos os campos obrigatórios.", "error");
+          return;
+        }
+
+        try {
+          const response = await fetch(TAREFA_API_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(tarefaData),
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Falha ao criar tarefa: ${errorText}`);
+          }
+
+          const data = await response.json();
+          showMessage(`Tarefa "${data.titulo}" criada com sucesso!`, "success");
+          formCreateTarefa.reset();
+        } catch (error) {
+          showMessage(`Erro ao criar tarefa: ${error.message}`, "error");
+          console.error("Erro detalhado:", error);
+        }
+      });
+
       async function fetchSchools(instituicaoId) {
         try {
           const response = await fetch(`${API_URL}/${instituicaoId}/escolas`);
@@ -769,6 +818,28 @@
           showMessage(error.message, "error");
         }
       });
+
+      // Função para deletar gestor (se necessário)
+      async function deleteGestor(instituicaoId, gestorId) {
+        if (!window.confirm("Tem certeza que deseja deletar este gestor?"))
+          return;
+        try {
+          const response = await fetch(
+            `${API_URL}/${instituicaoId}/gestores/${gestorId}`,
+            {
+              method: "DELETE",
+            }
+          );
+          if (response.status === 204) {
+            showMessage("Gestor deletado com sucesso!", "success");
+            fetchGestores(instituicaoId);
+          } else {
+            throw new Error(`Status ${response.status} ao deletar.`);
+          }
+        } catch (error) {
+          showMessage(`Erro ao deletar gestor: ${error.message}`, "error");
+        }
+      }
 
       // Inicialização
       fetchInstitutions();

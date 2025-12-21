@@ -12,10 +12,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.instituicao.dto.TarefaRequest;
@@ -31,8 +29,7 @@ public class TarefaController {
 
     
     @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public Tarefa criarTarefa(@RequestBody TarefaRequest request, @RequestHeader("X-INSTITUICAO-ID") String instituicaoId) {
+    public Tarefa criarTarefa(@RequestBody TarefaRequest request, String instituicaoId) {
    
         return tarefaService.criarTarefa(instituicaoId, request);
     }
@@ -51,7 +48,7 @@ public class TarefaController {
 
 @GetMapping("/download/pdf")
 public ResponseEntity<byte[]> exportarTarefasParaPdf(
-        @RequestParam(required = false) String instituicaoId) { // ← RECEBE O PARÂMETRO
+        @RequestParam(required = false) String instituicaoId) { 
     
     List<Tarefa> listaDeTarefas;
     
